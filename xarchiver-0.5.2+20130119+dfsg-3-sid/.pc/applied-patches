@@ -1,0 +1,14 @@
+desktop-file.patch
+fix-7z-crash.patch
+fix-format-is-not-a-string-literal-error.patch
+fix-double-escaping.patch
+no-donators-menu.patch
+accept-pre-posix-tar-files.patch
+new-homepage.patch
+check-for-password-protected-files-on-double-click.patch
+fix-segfault-non-existent-archive-cmdl-switch-x.patch
+rpm2cpio.patch
+expilicit_extensions.patch
+default-archive-format.patch
+drag-n-drop_escaped_path.patch
+xz-support.patch

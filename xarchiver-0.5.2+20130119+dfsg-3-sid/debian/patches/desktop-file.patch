@@ -1,0 +1,29 @@
+From: Markus Koschany <apo@gambaru.de>
+Date: Sat, 15 Dec 2012 22:20:30 +0000
+Subject: desktop-file
+
+The patch creates a valid desktop file and corrects a deprecated mime type entry.
+
+Bug: http://bugs.debian.org/656301
+---
+ xarchiver.desktop.in |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/xarchiver.desktop.in b/xarchiver.desktop.in
+index aeef1d1..ed92af8 100644
+--- a/xarchiver.desktop.in
++++ b/xarchiver.desktop.in
+@@ -1,5 +1,4 @@
+ [Desktop Entry]
+-Encoding=UTF-8
+ Version=1.0
+ _Name=Xarchiver
+ _Comment=A GTK+2 only archive manager
+@@ -10,5 +9,6 @@ Terminal=false
+ Type=Application
+ X-MultipleArgs=false
+ Categories=GTK;Archiving;Utility;
++Keywords=GTK;archiver;frontend;compression;zip;bz2;7z;gzip;deb;rpm;arj;lzma;rar;
+ StartupNotify=true
+-MimeType=application/x-arj;application/arj;application/x-bzip;application/x-bzip-compressed-tar;application/x-gzip;application/x-rar;application/x-rar-compressed;application/x-tar;application/x-zip;application/x-zip-compressed;application/zip;multipart/x-zip;application/x-7z-compressed;application/x-compressed-tar;application/x-bzip2;application/x-bzip2-compressed-tar;application/x-lzma-compressed-tar;application/x-lzma;
++MimeType=application/x-arj;application/arj;application/x-bzip;application/x-bzip-compressed-tar;application/x-gzip;application/x-rar;application/x-rar-compressed;application/x-tar;application/x-zip;application/x-zip-compressed;application/zip;application/x-7z-compressed;application/x-compressed-tar;application/x-bzip2;application/x-bzip2-compressed-tar;application/x-lzma-compressed-tar;application/x-lzma;application/x-deb;application/deb;

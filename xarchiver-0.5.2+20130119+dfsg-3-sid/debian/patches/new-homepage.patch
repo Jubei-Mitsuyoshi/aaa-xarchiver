@@ -1,0 +1,21 @@
+From: Markus Koschany <apo@gambaru.de>
+Date: Wed, 23 Jan 2013 09:45:26 +0100
+Subject: new homepage
+
+---
+ src/window.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/window.c b/src/window.c
+index 7eaf251..d8571b1 100644
+--- a/src/window.c
++++ b/src/window.c
+@@ -980,7 +980,7 @@ void xa_about (GtkMenuItem *menuitem,gpointer user_data)
+ 			"documenters",documenters,
+ 			"translator_credits",_("translator-credits"),
+ 			"logo_icon_name","xarchiver",
+-			"website","http://xarchiver.xfce.org",
++			"website","http://xarchiver.sourceforge.net",
+ 			"license","Copyright \xC2\xA9 2005-2008 Giuseppe Torelli - Colossus <colossus73@gmail.com>\n\n"
+ 		    			"This is free software; you can redistribute it and/or\n"
+     					"modify it under the terms of the GNU Library General Public License as\n"

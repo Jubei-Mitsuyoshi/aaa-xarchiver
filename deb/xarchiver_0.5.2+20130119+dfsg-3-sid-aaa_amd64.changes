@@ -1,0 +1,36 @@
+Format: 1.8
+Date: Thu, 21 Nov 2013 13:08:30 +0100
+Source: xarchiver
+Binary: xarchiver xarchiver-dbg
+Architecture: source amd64
+Version: 1:0.5.2+20130119+dfsg-3-sid-aaa
+Distribution: unstable
+Urgency: low
+Maintainer: Markus Koschany <apo@gambaru.de>
+Changed-By: Jubei-Mitsuyoshi <jubei.house.of.five.masters@gmail.com>
+Description: 
+ xarchiver  - GTK+ frontend for most used compression formats
+ xarchiver-dbg - debugging symbols for xarchiver
+Changes: 
+ xarchiver (1:0.5.2+20130119+dfsg-3-sid-aaa) unstable; urgency=low
+ .
+   * added a shed load of patches from lsd linux stable/xarchiver should
+     be good
+Checksums-Sha1: 
+ a4cc9c080d17749ed0d6011694eefbfa39067d71 1203 xarchiver_0.5.2+20130119+dfsg-3-sid-aaa.dsc
+ 30292cf558c55240719858c3ce58045599072571 1120158 xarchiver_0.5.2+20130119+dfsg-3-sid.orig.tar.gz
+ 14f3ac0c7b2edbf30edfacdfa7b912410d42bb89 61200 xarchiver_0.5.2+20130119+dfsg-3-sid-aaa.debian.tar.gz
+ 2485c1e25ce3d3967db4faded84f11e1aed0871f 443044 xarchiver_0.5.2+20130119+dfsg-3-sid-aaa_amd64.deb
+ a88ec6e54b408920c5ad3251c4aa4b383a47fee5 399404 xarchiver-dbg_0.5.2+20130119+dfsg-3-sid-aaa_amd64.deb
+Checksums-Sha256: 
+ c98b59ea57f778d7c013e37092c8b423d34fa7c6d8e4ceb864b962ee5ddaaf19 1203 xarchiver_0.5.2+20130119+dfsg-3-sid-aaa.dsc
+ 4528f6c2ff2d84eb19e05175ad2f3526f81e7c887e7b140d1ba28266b297c4e6 1120158 xarchiver_0.5.2+20130119+dfsg-3-sid.orig.tar.gz
+ 5764585b8eff473e43e80f72ef9b6f76e2e99da1c403a2bd15293315d2c0bd45 61200 xarchiver_0.5.2+20130119+dfsg-3-sid-aaa.debian.tar.gz
+ 811db2dae10590afeee0d410f917ade1b065c1adbe3a89b9ace3c77ab23413ed 443044 xarchiver_0.5.2+20130119+dfsg-3-sid-aaa_amd64.deb
+ a99c69820db8eccd2dcf9c15293b177cba75cdec50cf0ea4d847b1b999d0935d 399404 xarchiver-dbg_0.5.2+20130119+dfsg-3-sid-aaa_amd64.deb
+Files: 
+ c91b0ec43f5e2b1246dd0be1b96f08b3 1203 x11 optional xarchiver_0.5.2+20130119+dfsg-3-sid-aaa.dsc
+ 48ca67bbd53331456049dd6b8e29ab29 1120158 x11 optional xarchiver_0.5.2+20130119+dfsg-3-sid.orig.tar.gz
+ babed13575a7255ea8746d8f235a7bf5 61200 x11 optional xarchiver_0.5.2+20130119+dfsg-3-sid-aaa.debian.tar.gz
+ f877cf20f595cd61550776a91d4f88a1 443044 x11 optional xarchiver_0.5.2+20130119+dfsg-3-sid-aaa_amd64.deb
+ 782e9d8e6e8cd3f459677177ab9d2b6d 399404 debug extra xarchiver-dbg_0.5.2+20130119+dfsg-3-sid-aaa_amd64.deb

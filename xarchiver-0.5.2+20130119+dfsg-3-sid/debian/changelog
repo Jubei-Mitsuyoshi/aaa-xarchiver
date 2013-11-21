@@ -1,0 +1,309 @@
+xarchiver (1:0.5.2+20130119+dfsg-3-sid-aaa) unstable; urgency=low
+
+  * added a shed load of patches from lsd linux stable/xarchiver should
+    be good
+
+ -- root <root@localhost.localdomain>  Thu, 21 Nov 2013 13:08:30 +0100
+
+xarchiver (1:0.5.2+20130119+dfsg-3) unstable; urgency=low
+
+  * [4b84604] Suggest lhasa as drop in replacement for lha. (LP: #1173869)
+  * [c7d1b8b] Update fix-7z-crash.patch and fix support for 7z archives.
+    Display content of 7z archives and files with spaces correctly.
+    (Closes: #717700)
+  * [e4808cb] debian/rules: Add dh_auto_clean override.
+    Touch config.status to avoid build issues with git-buildpackage and
+    remove the file again.
+
+ -- Markus Koschany <apo@gambaru.de>  Wed, 24 Jul 2013 18:11:59 +0200
+
+xarchiver (1:0.5.2+20130119+dfsg-2) unstable; urgency=low
+
+  * [3f6b363] Translate comment, GenericName and Name again.
+    The translation strings in xarchiver's desktop file have been accidentally
+    removed. Add them again.
+  * [2515903] Add check-for-password-protected-files-on-double-click.patch:
+     - Unsafe handling of password protected archives could result in a
+       complete freeze of xarchiver. The bug has been triggered by
+       double-clicking on files before a valid password had been provided.
+       To view an encrypted file by double-clicking on it, it is necessary
+       to provide the password via the popup menu (right-click->View) or the
+       "Enter password" dialog (main menu) first. (Closes: #633598)
+  * [a2bd7b1] Add fix-segfault-non-existent-archive-cmdl-switch-x.patch:
+    - Fixes a segmentation fault when trying to extract non-existent archives
+      with the command line switch -x. (Closes: #701909)
+  * [c40db27] Improve dep3 headers for all patches.
+  * [07ad3f9] Update copyright years.
+
+ -- Markus Koschany <apo@gambaru.de>  Wed, 06 Mar 2013 17:15:12 +0100
+
+xarchiver (1:0.5.2+20130119+dfsg-1) unstable; urgency=low
+
+  * New Maintainer. (Closes: #697288)
+  * New features and patches:
+    - accept-pre-posix-tar-files.patch: Until now xarchiver only allowed to
+      open tar files in UStar format because earlier formats did not use magic
+      numbers to identify themselves. From now on xarchiver recognizes all tar
+      files. (Closes: #574012)
+    - Add Fix-format-is-not-a-string-literal-error.patch to prevent a FTBFS.
+    - Drop 03-html-icon.patch. Replace the removed html-icon with a free one
+      from the lxde-icon-theme which is a better solution for #505778.
+    - fix-double-escaping.patch: Now xarchiver handles folders with spaces
+      correctly. Special characters are not escaped twice anymore.
+      Thanks Guido Berhörster for the patch. (Closes: #697493)
+    - no-donators-menu.patch: The "Thanks to" donators menu is gone. A new
+      Donate entry points the user to xarchiver's homepage where it is
+      possible to contribute to the further development.
+    - Merge mime-type.patch with desktop-file.patch.
+    - Add new-homepage.patch which replaces the old address in the
+      About-dialog with xarchiver's new one at sourceforge.net.
+    - Remove all numbers from the patch names.
+  * Switch to packaging format 3.0 (quilt).
+  * Update debian/copyright to copright format 1.0.
+  * Add missing LGPL-2+ and LGPL-3+ license.
+  * Bump compat level to 9 and require debhelper >= 9 for automatic hardening
+    build flags
+  * debian/control:
+    - Remove build-dependency on quilt, we are using packaging format
+      3.0 anyway.
+    - Add Vcs-fields. Xarchiver will be maintained in a git repository at
+      collab-maint from now on.
+    - Bump Standards-Version to 3.9.4, no changes needed.
+    - Change recommended and suggested packages. Recommend only the most widely
+      used and best compressors which are supported by xarchiver and suggest
+      all other ones. This means rpm, zip and arj are suggested now. Add
+      also unrar-free to Suggests.
+  * Provide a new binary package with debugging symbols, xarchiver-dbg, to ease
+    debugging in the future.
+  * debian/rules:
+    - Build with --parallel and autotools_dev.
+    - Build with hardening=+all.
+    - Build with -Wl, --as-needed to avoid unnecessary dependencies.
+  * Remove configure-generated files config.log and config.status from the
+    original sources.
+  * Register xarchiver manual with doc-base.
+  * Update menu and desktop file. Add keywords and remove deprecated UTF-8
+    field.
+
+ -- Markus Koschany <apo@gambaru.de>  Thu, 24 Jan 2013 18:28:09 +0100
+
+xarchiver (1:0.5.2+20090319+dfsg-4.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Add patch 04-fix-7z-crash.patch and restore the ability to open and view
+    7z archives again. (Closes: #665642)
+  * Remove discouraged MIME type multipart/x-zip from desktop file.
+    (Closes: #656301)
+  * Don't mention xarchive in the package description because it isn't
+    available in Debian. (Closes: #692261)
+
+ -- Markus Koschany <apo@gambaru.de>  Tue, 04 Dec 2012 06:43:48 +0000
+
+xarchiver (1:0.5.2+20090319+dfsg-4) unstable; urgency=low
+
+  [ Daniel Baumann ]
+  * Updating and sorting depends.
+  * Updating package to standards version 3.8.3.
+  * Removing vcs fields.
+
+  [ Christian Hübschi ]
+  * New maintainer.
+
+ -- Christian Hübschi <huebschi.christian@gmail.com>  Wed, 26 Aug 2009 21:40:06 +0200
+
+xarchiver (1:0.5.2+20090319+dfsg-3) unstable; urgency=low
+
+  * Correcting error from previous upload where inproper passing of
+    extraflags to the dh_auto_configure call in minizied rules leads to
+    wrong location of the tap file (Closes: #539305).
+
+ -- Daniel Baumann <daniel@debian.org>  Sun, 09 Aug 2009 10:34:17 +0200
+
+xarchiver (1:0.5.2+20090319+dfsg-2) unstable; urgency=low
+
+  * Using correct rfc-2822 date formats in changelog.
+  * Updating package to standards version 3.8.2.
+  * Adding missing semicolons in mime file (Closes: #527347).
+  * Checking for extractors, not compressors in mime file (Closes:
+    #527348).
+  * Dropping useless versions from build-depends.
+  * Minimizing rules file.
+  * Rediffing html-icon.patch.
+
+ -- Daniel Baumann <daniel@debian.org>  Sun, 26 Jul 2009 21:31:00 +0200
+
+xarchiver (1:0.5.2+20090319+dfsg-1) unstable; urgency=low
+
+  * Adding lha to suggests (Closes: #512685).
+  * Updating standards version to 3.8.1.
+  * Adding upstream target in rules.
+  * Adding intltool to build-depends.
+  * Merging upstream version 0.5.2+20090319+dfsg:
+    - fixes segment violation (Closes: #517488).
+  * Rediffing mime-types.patch.
+  * Updating mime file.
+  * Calling desktop debhelper in rules.
+
+ -- Daniel Baumann <daniel@debian.org>  Thu, 19 Mar 2009 10:51:00 +0100
+
+xarchiver (0.5.2+dfsg-2) unstable; urgency=low
+
+  * Correcting typo in mime file (Closes: #511119).
+  * Prefixing debhelper files with package name.
+  * Using quilt rather than dpatch.
+  * Updating year in copyright file.
+  * Updating manpage.
+  * Updating menu file.
+  * Adding xdg-utils to recommends.
+
+ -- Daniel Baumann <daniel@debian.org>  Fri, 09 Jan 2009 11:13:00 -0500
+
+xarchiver (0.5.2+dfsg-1) unstable; urgency=low
+
+  * Merging upstream version 0.5.2+dfsg.
+  * Adding upstream target in rules file.
+  * Adding patch to not use html icon until we have a replacement for it
+    (Closes: #505778).
+
+ -- Daniel Baumann <daniel@debian.org>  Sat, 15 Nov 2008 09:38:00 +0100
+
+xarchiver (0.5.2-1) unstable; urgency=low
+
+  * Replacing obsolete dh_clean -k with dh_prep.
+  * Merging upstream version 0.5.2.
+
+ -- Daniel Baumann <daniel@debian.org>  Sat, 15 Nov 2008 08:06:00 +0100
+
+xarchiver (0.5.1-1) unstable; urgency=low
+
+  * Merging upstream version 0.5.1.
+
+ -- Daniel Baumann <daniel@debian.org>  Fri, 07 Nov 2008 14:54:00 +0100
+
+xarchiver (0.5.0-1) unstable; urgency=low
+
+  * Merging upstream version 0.5.0.
+
+ -- Daniel Baumann <daniel@debian.org>  Thu, 06 Nov 2008 14:30:00 +0100
+
+xarchiver (0.5.0~beta2-1) unstable; urgency=low
+
+  * Merging upstream version 0.5.0~beta2.
+
+ -- Daniel Baumann <daniel@debian.org>  Thu, 09 Oct 2008 18:28:00 +0200
+
+xarchiver (0.5.0~beta1-2) unstable; urgency=low
+
+  * Using patch-stamp rather than patch in rules (Closes: #492021).
+
+ -- Daniel Baumann <daniel@debian.org>  Fri, 19 Sep 2008 13:42:00 +0200
+
+xarchiver (0.5.0~beta1-1) experimental; urgency=low
+
+  * Updating vcs fields in control file.
+  * Merging upstream version 0.5.0~beta1.
+  * Updating year in upstream section of copyright file.
+
+ -- Daniel Baumann <daniel@debian.org>  Sun, 14 Sep 2008 14:48:00 +0200
+
+xarchiver (0.4.6-8) unstable; urgency=low
+
+  * Adding mime entries, thanks to Bernhard R. Link <brlink@debian.org>
+    (Closes: #492020).
+  * Correcting spelling mistake in package short description.
+  * Reordering rules file.
+  * Rewriting copyright file in machine-interpretable format.
+  * Adding vcs fields to control file.
+  * Removing watch file.
+  * Upgrading package to standards 3.8.0.
+  * Upgrading package to debhelper 7.
+
+ -- Daniel Baumann <daniel@debian.org>  Mon, 04 Aug 2008 13:32:00 +0200
+
+xarchiver (0.4.6-7) unstable; urgency=low
+
+  * Added .TH header to the manpage (Closes: #454916).
+
+ -- Daniel Baumann <daniel@debian.org>  Sat, 08 Dec 2007 11:28:00 +0100
+
+xarchiver (0.4.6-6) unstable; urgency=low
+
+  * Adding deb mime types to desktop file (Closes: #454669).
+
+ -- Daniel Baumann <daniel@debian.org>  Fri, 07 Dec 2007 09:06:00 +0100
+
+xarchiver (0.4.6-5) unstable; urgency=low
+
+  * Temporarily revert icon move (Closes: #441420).
+
+ -- Daniel Baumann <daniel@debian.org>  Sun, 30 Sep 2007 10:52:00 +0200
+
+xarchiver (0.4.6-4) unstable; urgency=low
+
+  * Corrected icon path (Closes: #409502).
+
+ -- Daniel Baumann <daniel@debian.org>  Wed, 15 Aug 2007 16:04:00 +0200
+
+xarchiver (0.4.6-3) unstable; urgency=low
+
+  * Removed superfluous files in /usr/share/doc/xarchiver.
+
+ -- Daniel Baumann <daniel@debian.org>  Tue, 15 May 2007 14:37:00 +0200
+
+xarchiver (0.4.6-2) unstable; urgency=low
+
+  * As a workaround, changed recommends to p7zip-full (Closes: #395231).
+  * Moving thunar archive plugin to the right place (Closes: #392722).
+  * Raised debhelper to version 5.
+
+ -- Daniel Baumann <daniel@debian.org>  Thu, 18 Jan 2007 10:41:00 +0100
+
+xarchiver (0.4.6-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Daniel Baumann <daniel@debian.org>  Tue, 12 Dec 2006 15:03:00 +0100
+
+xarchiver (0.4.0-1) unstable; urgency=low
+
+  * New upstream release:
+    - Fixes problem with thunar (Closes: #378845).
+
+ -- Daniel Baumann <daniel@debian.org>  Fri, 01 Sep 2006 14:07:00 +0200
+
+xarchiver (0.3.9.2beta2-2) unstable; urgency=low
+
+  * Added patch to fix name of the desktop icon (Closes: #378842).
+
+ -- Daniel Baumann <daniel@debian.org>  Wed, 19 Jul 2006 11:46:00 +0200
+
+xarchiver (0.3.9.2beta2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Daniel Baumann <daniel@debian.org>  Tue, 18 Jul 2006 19:43:00 +0200
+
+xarchiver (0.3.3-2) unstable; urgency=low
+
+  * New email address.
+
+ -- Daniel Baumann <daniel@debian.org>  Thu, 06 Jul 2006 10:32:00 +0200
+
+xarchiver (0.3.3-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Daniel Baumann <daniel.baumann@panthera-systems.net>  Tue, 09 May 2006 09:59:00 -0500
+
+xarchiver (0.3.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Daniel Baumann <daniel.baumann@panthera-systems.net>  Fri, 28 Apr 2006 11:10:00 +0100
+
+xarchiver (0.3.1-1) unstable; urgency=low
+
+  * Initial release (Closes: #344312).
+  * Added icon and manpage.
+
+ -- Daniel Baumann <daniel.baumann@panthera-systems.net>  Sun, 12 Mar 2006 09:45:00 +0100

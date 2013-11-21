@@ -1,0 +1,51 @@
+Source: xarchiver
+Section: x11
+Priority: optional
+Maintainer: Markus Koschany <apo@gambaru.de>
+Build-Depends:
+ autotools-dev,
+ debhelper (>= 9),
+ intltool,
+ libgtk2.0-dev
+Standards-Version: 3.9.4
+Homepage: http://xarchiver.sourceforge.net/
+Vcs-Git: git://anonscm.debian.org/collab-maint/xarchiver.git
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/xarchiver.git
+
+Package: xarchiver
+Architecture: any
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends}
+Recommends:
+ bzip2,
+ p7zip-full,
+ unzip,
+ xdg-utils,
+Suggests:
+ arj,
+ lhasa,
+ rar,
+ rpm,
+ unrar-free,
+ zip
+Description: GTK+ frontend for most used compression formats
+ Xarchiver is a lightweight desktop independent GTK+ frontend for manipulating
+ 7z, arj, bzip2, gzip, rar, tar, zip, rpm and deb files. It allows you to
+ create archives and add, extract, and delete files from them. Password
+ protected archives in the arj, 7z, rar and zip formats are supported.
+
+Package: xarchiver-dbg
+Section: debug
+Priority: extra
+Architecture: any
+Depends:
+ xarchiver (= ${binary:Version}),
+ ${misc:Depends}
+Description: debugging symbols for xarchiver
+ Xarchiver is a lightweight desktop independent GTK+ frontend for manipulating
+ 7z, arj, bzip2, gzip, rar, tar, zip, rpm and deb files. It allows you to
+ create archives and add, extract, and delete files from them. Password
+ protected archives in the arj, 7z, rar and zip formats are supported.
+ .
+ This package contains detached debugging symbols.

@@ -1,0 +1,47 @@
+From: Markus Koschany <apo@gambaru.de>
+Date: Sun, 20 Jan 2013 21:51:00 +0100
+Subject: accept pre-posix tar files
+
+This patch adds support for opening pre-posix tar files which had no magic
+number.
+
+Bug: http://bugs.debian.org/574012
+---
+ src/tar.c    |    4 +++-
+ src/window.c |    4 ++--
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/src/tar.c b/src/tar.c
+index 3082ff6..deae44c 100644
+--- a/src/tar.c
++++ b/src/tar.c
+@@ -148,7 +148,9 @@ gboolean isTar (FILE *ptr)
+ 		return FALSE;
+     if ( fread ( magic, 1, 7, ptr ) == 0 )
+ 		return FALSE;
+-    if ( memcmp ( magic,"\x75\x73\x74\x61\x72\x00\x30",7 ) == 0 || memcmp (magic,"\x75\x73\x74\x61\x72\x20\x20",7 ) == 0)
++    if ( memcmp ( magic,"\x75\x73\x74\x61\x72\x00\x30",7 ) == 0 ||
++	 memcmp ( magic,"\x75\x73\x74\x61\x72\x20\x20",7 ) == 0 ||
++ 	 memcmp ( magic,"\x0\x0\x0\x0\x0\x0\x0",7) == 0)
+ 		return TRUE;
+     else
+ 		return FALSE;
+diff --git a/src/window.c b/src/window.c
+index abeec1d..7eaf251 100644
+--- a/src/window.c
++++ b/src/window.c
+@@ -1132,12 +1132,12 @@ XArchiveType xa_detect_archive_type (gchar *filename)
+ 		xx = XARCHIVETYPE_RPM;
+ 	else if (memcmp ( magic,"\x37\x7a\xbc\xaf\x27\x1c",6) == 0)
+ 		xx = XARCHIVETYPE_7ZIP;
+-	else if (isTar ( dummy_ptr))
+-		xx = XARCHIVETYPE_TAR;
+ 	else if (isLha ( dummy_ptr))
+ 		xx = XARCHIVETYPE_LHA;
+ 	else if (memcmp ( magic,"!<arch>\ndebian",14) == 0)
+ 		xx = XARCHIVETYPE_DEB;
++	else if (isTar ( dummy_ptr))
++		xx = XARCHIVETYPE_TAR;
+ 	fclose (dummy_ptr);
+ 	return xx;
+ }

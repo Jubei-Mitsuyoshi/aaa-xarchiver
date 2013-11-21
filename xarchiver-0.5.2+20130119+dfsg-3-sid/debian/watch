@@ -1,0 +1,4 @@
+version=3
+opts=dversionmangle=s/\.dfsg\.\d+$// \
+http://sf.net/xarchiver/xarchiver-(.+)\.(?:zip|tgz|tbz2|txz|tar\.gz|tar\.bz2|tar\.xz)
+

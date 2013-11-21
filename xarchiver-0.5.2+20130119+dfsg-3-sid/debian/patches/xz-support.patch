@@ -1,0 +1,2528 @@
+Description: <short summary of the patch>
+     xz support from lsd who took it from slackware
+Author: root <root@localhost.localdomain>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- xarchiver-0.5.2+20130119+dfsg-3-sid.orig/src/add_dialog.c
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/add_dialog.c
+@@ -204,7 +204,7 @@ void xa_set_add_dialog_options(Add_dialo
+ 	else
+ 		gtk_widget_set_size_request (add_dialog->dialog1,530,420);
+ 
+-	if (archive->type == XARCHIVETYPE_BZIP2 || archive->type == XARCHIVETYPE_GZIP || archive->type == XARCHIVETYPE_LZMA || archive->type == XARCHIVETYPE_LZOP)
++	if (archive->type == XARCHIVETYPE_BZIP2 || archive->type == XARCHIVETYPE_GZIP || archive->type == XARCHIVETYPE_LZMA || archive->type == XARCHIVETYPE_XZ || archive->type == XARCHIVETYPE_LZOP)
+ 		gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(add_dialog->filechooserwidget1),FALSE);
+ 	else
+ 		gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(add_dialog->filechooserwidget1),TRUE);
+@@ -217,7 +217,7 @@ void xa_set_add_dialog_options(Add_dialo
+ 	else
+ 		gtk_widget_set_sensitive(add_dialog->store_path,TRUE);
+ 	/* 7z doesn't appear to let the user chooses if storing full paths */
+-	if (archive->type == XARCHIVETYPE_7ZIP || archive->type == XARCHIVETYPE_LZOP || archive->type == XARCHIVETYPE_BZIP2 || archive->type == XARCHIVETYPE_GZIP || archive->type == XARCHIVETYPE_LZMA)
++	if (archive->type == XARCHIVETYPE_7ZIP || archive->type == XARCHIVETYPE_LZOP || archive->type == XARCHIVETYPE_BZIP2 || archive->type == XARCHIVETYPE_GZIP || archive->type == XARCHIVETYPE_LZMA || archive->type == XARCHIVETYPE_XZ )
+  	{
+  		flag = FALSE;
+ 	}
+@@ -239,7 +239,7 @@ void xa_set_add_dialog_options(Add_dialo
+ 		flag = TRUE;
+ 	gtk_widget_set_sensitive(add_dialog->solid_archive,flag);
+ 	
+-	if (archive->type != XARCHIVETYPE_TAR && archive->type != XARCHIVETYPE_TAR_GZ && archive->type != XARCHIVETYPE_TAR_LZMA && archive->type != XARCHIVETYPE_TAR_BZ2 && archive->type != XARCHIVETYPE_TAR_LZOP)
++	if (archive->type != XARCHIVETYPE_TAR && archive->type != XARCHIVETYPE_TAR_GZ && archive->type != XARCHIVETYPE_TAR_LZMA && archive->type != XARCHIVETYPE_TAR_XZ && archive->type != XARCHIVETYPE_TAR_BZ2 && archive->type != XARCHIVETYPE_TAR_LZOP)
+ 	{
+ 		flag = TRUE;
+ 		if (archive->type == XARCHIVETYPE_7ZIP)
+@@ -301,7 +301,7 @@ void xa_set_add_dialog_options(Add_dialo
+ 		g_signal_connect (G_OBJECT (add_dialog->compression_value),"value-changed",G_CALLBACK (fix_adjustment_value), NULL);
+ 	gtk_tooltips_set_tip (add_dialog->option_tooltip,add_dialog->compression_scale, compression_msg, NULL );
+ 
+-	if (archive->type == XARCHIVETYPE_TAR || archive->type == XARCHIVETYPE_TAR_GZ || archive->type == XARCHIVETYPE_TAR_LZMA || archive->type == XARCHIVETYPE_TAR_BZ2 || archive->type == XARCHIVETYPE_TAR_LZOP)
++	if (archive->type == XARCHIVETYPE_TAR || archive->type == XARCHIVETYPE_TAR_GZ || archive->type == XARCHIVETYPE_TAR_LZMA || archive->type == XARCHIVETYPE_TAR_XZ || archive->type == XARCHIVETYPE_TAR_BZ2 || archive->type == XARCHIVETYPE_TAR_LZOP)
+ 		flag = FALSE;
+ 	else
+ 		flag = TRUE;
+--- /dev/null
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/add_dialog.c.orig
+@@ -0,0 +1,496 @@
++/*
++ *  Copyright (C) 2008 Giuseppe Torelli - <colossus73@gmail.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, write to the Free Software
++ *  Foundation, Inc., 59 Temple Street #330, Boston, MA 02111-1307, USA.
++ */
++
++#include <gtk/gtk.h>
++#include "add_dialog.h"
++#include "window.h"
++#include "support.h"
++
++extern Prefs_dialog_data *prefs_window;
++
++Add_dialog_data *xa_create_add_dialog()
++{
++	GtkWidget *label1,*label2,*label3,*label4,*label5,*label7,*hbox1,*hbox2,*hbox3,*hbox4;
++	GtkWidget *dialog_action_area1,*alignment1,*alignment2,*alignment3,*vbox3,*frame2,*frame3,*frame4,*alignment4;
++	Add_dialog_data *add_dialog;
++
++	add_dialog = g_new0 (Add_dialog_data, 1);
++	add_dialog->option_tooltip = gtk_tooltips_new ();
++
++	add_dialog->dialog1 = gtk_dialog_new ();
++	gtk_window_set_title (GTK_WINDOW (add_dialog->dialog1), _("Add files"));
++	gtk_window_set_position (GTK_WINDOW (add_dialog->dialog1),GTK_WIN_POS_CENTER_ON_PARENT);
++	gtk_window_set_type_hint (GTK_WINDOW (add_dialog->dialog1), GDK_WINDOW_TYPE_HINT_DIALOG);
++	gtk_dialog_set_has_separator (GTK_DIALOG (add_dialog->dialog1),FALSE);
++
++	add_dialog->add_option_tooltip = gtk_tooltips_new ();
++	add_dialog->dialog_vbox1 = GTK_DIALOG (add_dialog->dialog1)->vbox;
++
++	add_dialog->notebook1 = gtk_notebook_new ();
++	gtk_box_pack_start (GTK_BOX (add_dialog->dialog_vbox1),add_dialog->notebook1, TRUE, TRUE,0);
++	gtk_container_set_border_width (GTK_CONTAINER (add_dialog->notebook1),4);
++
++	/* Selection page */
++	vbox1 = gtk_vbox_new (FALSE,2);
++	gtk_container_add (GTK_CONTAINER (add_dialog->notebook1), vbox1);
++
++	label1 = gtk_label_new (_("Selection"));
++	gtk_notebook_set_tab_label (GTK_NOTEBOOK (add_dialog->notebook1), gtk_notebook_get_nth_page (GTK_NOTEBOOK (add_dialog->notebook1), 0), label1);
++	
++	add_dialog->filechooserwidget1 = gtk_file_chooser_widget_new (GTK_FILE_CHOOSER_ACTION_OPEN);
++	gtk_box_pack_start (GTK_BOX (vbox1), add_dialog->filechooserwidget1, TRUE, TRUE,2);
++
++	add_dialog->frame1 = gtk_frame_new (NULL);
++	gtk_box_pack_start (GTK_BOX (vbox1), add_dialog->frame1, FALSE, TRUE,5);
++	gtk_container_set_border_width (GTK_CONTAINER (add_dialog->frame1),5);
++
++	alignment1 = gtk_alignment_new (0.5, 0.5, 1, 1);
++	gtk_container_add (GTK_CONTAINER (add_dialog->frame1), alignment1);
++	gtk_alignment_set_padding (GTK_ALIGNMENT (alignment1), 0, 0, 20, 20);
++
++	label3 = gtk_label_new (_("File Paths: "));
++	gtk_frame_set_label_widget (GTK_FRAME (add_dialog->frame1), label3);
++
++	hbox1 = gtk_hbox_new (TRUE, 0);
++	gtk_container_add (GTK_CONTAINER (alignment1), hbox1);
++
++	add_dialog->store_path = gtk_radio_button_new_with_mnemonic (NULL, _("Store full paths"));
++	gtk_box_pack_start (GTK_BOX (hbox1), add_dialog->store_path, FALSE, FALSE, 0);
++	gtk_button_set_focus_on_click (GTK_BUTTON (add_dialog->store_path), FALSE);
++	
++	add_dialog->no_store_path = gtk_radio_button_new_with_mnemonic_from_widget(GTK_RADIO_BUTTON(add_dialog->store_path), _("Do not store paths"));
++	gtk_box_pack_start (GTK_BOX (hbox1), add_dialog->no_store_path, FALSE, FALSE, 0);
++	gtk_button_set_focus_on_click (GTK_BUTTON (add_dialog->no_store_path), FALSE);
++	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(add_dialog->no_store_path),TRUE);
++
++	/* Options page */
++	add_dialog->option_notebook_vbox = gtk_vbox_new (FALSE, 0);
++	gtk_container_add (GTK_CONTAINER (add_dialog->notebook1), add_dialog->option_notebook_vbox);
++
++	label2 = gtk_label_new (_("Options"));
++	gtk_notebook_set_tab_label (GTK_NOTEBOOK (add_dialog->notebook1), gtk_notebook_get_nth_page (GTK_NOTEBOOK (add_dialog->notebook1), 1), label2);
++	
++	hbox2 = gtk_hbox_new (TRUE, 10);
++	gtk_box_pack_start (GTK_BOX (add_dialog->option_notebook_vbox), hbox2, TRUE, TRUE, 0);
++	gtk_container_set_border_width (GTK_CONTAINER (hbox2), 5);
++
++	frame4 = gtk_frame_new (NULL);
++	gtk_box_pack_start (GTK_BOX (hbox2), frame4, TRUE, TRUE, 0);
++	gtk_frame_set_shadow_type (GTK_FRAME (frame4), GTK_SHADOW_OUT);
++
++	alignment4 = gtk_alignment_new (0.5, 0.5, 1, 1);
++	gtk_container_add (GTK_CONTAINER (frame4),alignment4);
++	gtk_alignment_set_padding (GTK_ALIGNMENT(alignment4), 0, 0, 12, 0);
++
++	vbox3 = gtk_vbox_new (TRUE, 0);
++	gtk_container_add (GTK_CONTAINER (alignment4),vbox3);
++
++	add_dialog->update = gtk_check_button_new_with_mnemonic (_("Update and add"));
++	gtk_button_set_focus_on_click (GTK_BUTTON (add_dialog->update), FALSE);
++	gtk_tooltips_set_tip (add_dialog->option_tooltip,add_dialog->update, _("This option will add any new files and update any files which have been modified since the archive was last created/modified"), NULL );
++	gtk_box_pack_start (GTK_BOX (vbox3), add_dialog->update, FALSE, FALSE, 0);
++
++	add_dialog->freshen = gtk_check_button_new_with_mnemonic (_("Freshen and replace"));
++
++	gtk_button_set_focus_on_click (GTK_BUTTON (add_dialog->freshen), FALSE);
++	gtk_tooltips_set_tip (add_dialog->option_tooltip,add_dialog->freshen , _("This option affects the archive only if it has been modified more recently than the version already in the archive; unlike the update option it will not add files that are not already in the archive"), NULL );
++	gtk_box_pack_start (GTK_BOX (vbox3), add_dialog->freshen, FALSE, FALSE, 0);
++	g_signal_connect (G_OBJECT (add_dialog->freshen),"toggled",G_CALLBACK (add_fresh_update_toggled_cb) , add_dialog);
++
++	add_dialog->recurse = gtk_check_button_new_with_mnemonic (_("Include subdirectories"));
++	gtk_button_set_focus_on_click (GTK_BUTTON (add_dialog->recurse), FALSE);
++	gtk_box_pack_start (GTK_BOX (vbox3), add_dialog->recurse, FALSE, FALSE, 0);
++
++	add_dialog->solid_archive = gtk_check_button_new_with_mnemonic (_("Create a solid archive"));
++	gtk_button_set_focus_on_click (GTK_BUTTON (add_dialog->solid_archive), FALSE);
++	gtk_tooltips_set_tip (add_dialog->option_tooltip,add_dialog->solid_archive , _("In a solid archive the files are grouped together featuring a better compression ratio"), NULL);
++	gtk_box_pack_start (GTK_BOX (vbox3), add_dialog->solid_archive, FALSE, FALSE, 0);
++
++	add_dialog->remove_files = gtk_check_button_new_with_mnemonic (_("Delete files after adding"));
++	gtk_button_set_focus_on_click (GTK_BUTTON (add_dialog->remove_files), FALSE);
++	gtk_box_pack_start (GTK_BOX (vbox3),add_dialog->remove_files, FALSE, FALSE, 0);
++
++	label7 = gtk_label_new (_("Actions: "));
++	gtk_frame_set_label_widget (GTK_FRAME (frame4), label7);
++	
++	hbox3 = gtk_hbox_new (TRUE, 10);
++	gtk_box_pack_start (GTK_BOX (add_dialog->option_notebook_vbox), hbox3, TRUE, TRUE, 0);
++	gtk_container_set_border_width (GTK_CONTAINER (hbox3), 5);
++
++	frame2 = gtk_frame_new (NULL);
++	gtk_box_pack_start (GTK_BOX (hbox3), frame2, TRUE, TRUE, 0);
++	gtk_frame_set_shadow_type (GTK_FRAME (frame2), GTK_SHADOW_OUT);
++
++	add_dialog->alignment2 = gtk_alignment_new (0.5, 0.5, 1, 1);
++	gtk_container_add (GTK_CONTAINER (frame2), add_dialog->alignment2);
++	gtk_alignment_set_padding (GTK_ALIGNMENT (add_dialog->alignment2), 0, 0, 5, 5);
++
++	label4 = gtk_label_new (_("Compression: "));
++	gtk_frame_set_label_widget (GTK_FRAME (frame2), label4);
++
++	frame3 = gtk_frame_new (NULL);
++	gtk_box_pack_start (GTK_BOX (hbox3), frame3, TRUE, TRUE, 0);
++	gtk_frame_set_shadow_type (GTK_FRAME (frame3), GTK_SHADOW_OUT);
++
++	alignment3 = gtk_alignment_new (0.5, 0.5, 1, 1);
++	gtk_container_add (GTK_CONTAINER (frame3), alignment3);
++	gtk_alignment_set_padding (GTK_ALIGNMENT (alignment3), 0, 0, 5, 5);
++
++	hbox4 = gtk_hbox_new (FALSE, 0);
++	gtk_container_add (GTK_CONTAINER (alignment3), hbox4);
++
++	add_dialog->add_password = gtk_check_button_new_with_mnemonic (_("Password:"));
++	gtk_box_pack_start (GTK_BOX (hbox4), add_dialog->add_password, FALSE, FALSE, 0);
++	g_signal_connect (G_OBJECT (add_dialog->add_password), "toggled",G_CALLBACK (password_toggled_cb) , add_dialog);
++
++	add_dialog->add_password_entry = gtk_entry_new ();
++	gtk_box_pack_start (GTK_BOX (hbox4), add_dialog->add_password_entry, FALSE, FALSE, 0);
++	gtk_entry_set_visibility (GTK_ENTRY (add_dialog->add_password_entry), FALSE);
++	gtk_entry_set_width_chars (GTK_ENTRY (add_dialog->add_password_entry), 15);
++	gtk_widget_set_sensitive (add_dialog->add_password_entry, FALSE);
++
++	label5 = gtk_label_new (_("Encryption: "));
++	gtk_frame_set_label_widget (GTK_FRAME (frame3), label5);
++  
++	dialog_action_area1 = GTK_DIALOG (add_dialog->dialog1)->action_area;
++	gtk_button_box_set_layout (GTK_BUTTON_BOX (dialog_action_area1), GTK_BUTTONBOX_END);
++
++	add_dialog->cancel_button = gtk_button_new_from_stock ("gtk-cancel");
++	gtk_dialog_add_action_widget (GTK_DIALOG (add_dialog->dialog1), add_dialog->cancel_button, GTK_RESPONSE_CANCEL);
++	GTK_WIDGET_SET_FLAGS (add_dialog->cancel_button, GTK_CAN_DEFAULT);
++
++	add_dialog->add_button = gtk_button_new();
++	add_dialog->add_image = xa_main_window_find_image("xarchiver-add.png", GTK_ICON_SIZE_SMALL_TOOLBAR);
++	add_dialog->add_hbox = gtk_hbox_new(FALSE, 4);
++	add_dialog->add_label = gtk_label_new_with_mnemonic(_("_Add"));
++
++	alignment2 = gtk_alignment_new (0.5, 0.5, 0, 0);
++	gtk_container_add (GTK_CONTAINER (alignment2), add_dialog->add_hbox);
++
++	gtk_box_pack_start(GTK_BOX(add_dialog->add_hbox), add_dialog->add_image, FALSE, TRUE, 0);
++	gtk_box_pack_start(GTK_BOX(add_dialog->add_hbox), add_dialog->add_label, FALSE, TRUE, 0);
++	gtk_container_add(GTK_CONTAINER(add_dialog->add_button), alignment2);
++
++	gtk_dialog_add_action_widget (GTK_DIALOG (add_dialog->dialog1), add_dialog->add_button, GTK_RESPONSE_OK);
++	GTK_WIDGET_SET_FLAGS (add_dialog->add_button, GTK_CAN_DEFAULT);
++	gtk_dialog_set_default_response (GTK_DIALOG (add_dialog->dialog1), GTK_RESPONSE_OK);
++	return add_dialog;
++}
++
++void xa_set_add_dialog_options(Add_dialog_data *add_dialog,XArchive *archive)
++{
++	gboolean flag = FALSE;
++	gchar *compression_msg = NULL;
++	unsigned short int default_value, max_value;
++	default_value = max_value = 0;
++
++	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(prefs_window->check_save_geometry)) && prefs_window->add_coords[0] != -1)
++		gtk_window_set_default_size (GTK_WINDOW(add_dialog->dialog1), prefs_window->add_coords[0], prefs_window->add_coords[1]);
++	else
++		gtk_widget_set_size_request (add_dialog->dialog1,530,420);
++
++	if (archive->type == XARCHIVETYPE_BZIP2 || archive->type == XARCHIVETYPE_GZIP || archive->type == XARCHIVETYPE_LZMA || archive->type == XARCHIVETYPE_LZOP)
++		gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(add_dialog->filechooserwidget1),FALSE);
++	else
++		gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(add_dialog->filechooserwidget1),TRUE);
++
++	if (archive->location_entry_path != NULL)
++	{
++		gtk_widget_set_sensitive(add_dialog->store_path,FALSE);
++		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(add_dialog->store_path),FALSE);
++	}
++	else
++		gtk_widget_set_sensitive(add_dialog->store_path,TRUE);
++	/* 7z doesn't appear to let the user chooses if storing full paths */
++	if (archive->type == XARCHIVETYPE_7ZIP || archive->type == XARCHIVETYPE_LZOP || archive->type == XARCHIVETYPE_BZIP2 || archive->type == XARCHIVETYPE_GZIP || archive->type == XARCHIVETYPE_LZMA)
++ 	{
++ 		flag = FALSE;
++	}
++	else
++		flag = TRUE;
++
++	gtk_widget_set_sensitive(add_dialog->option_notebook_vbox,flag);
++	gtk_widget_set_sensitive(label3,flag);
++	gtk_widget_set_sensitive(add_dialog->store_path,flag);
++	gtk_widget_set_sensitive(add_dialog->no_store_path,flag);
++ 		
++	if (archive->type != XARCHIVETYPE_7ZIP)
++		g_signal_connect (G_OBJECT (add_dialog->update),"toggled",G_CALLBACK (add_update_fresh_toggled_cb) , add_dialog);
++
++	if (archive->type != XARCHIVETYPE_7ZIP && archive->type != XARCHIVETYPE_LHA)
++		gtk_widget_set_sensitive(add_dialog->freshen,TRUE);
++
++	if (archive->type == XARCHIVETYPE_RAR || archive->type == XARCHIVETYPE_7ZIP)
++		flag = TRUE;
++	gtk_widget_set_sensitive(add_dialog->solid_archive,flag);
++	
++	if (archive->type != XARCHIVETYPE_TAR && archive->type != XARCHIVETYPE_TAR_GZ && archive->type != XARCHIVETYPE_TAR_LZMA && archive->type != XARCHIVETYPE_TAR_BZ2 && archive->type != XARCHIVETYPE_TAR_LZOP)
++	{
++		flag = TRUE;
++		if (archive->type == XARCHIVETYPE_7ZIP)
++		{
++			compression_msg = _("0 = no compression, 5 is default, 9 = best compression but slowest");
++			default_value = 5;
++			max_value = 9;
++		}
++		else if (archive->type == XARCHIVETYPE_ZIP)
++		{
++			compression_msg = _("0 = no compression, 6 is default, 9 = best compression but slowest");
++			default_value = 6;
++			max_value = 9;
++		}
++		else if (archive->type == XARCHIVETYPE_RAR)
++		{
++			compression_msg = _("0 = no compression, 3 is default, 5 = best compression but slowest");
++			default_value = 3;
++			max_value = 5;
++		}
++		else if (archive->type == XARCHIVETYPE_ARJ)
++		{
++			compression_msg = _("0 = no compression, 1 is default, 4 = fastest but least compression");
++			default_value = 1;
++			max_value = 4;
++		}
++		else if (archive->type == XARCHIVETYPE_LHA)
++		{
++			compression_msg = _("5 = default compression, 7 = max compression");
++			default_value = 5;
++			max_value = 7;
++		}
++	}
++	else
++		flag = FALSE;
++
++	if (archive->type == XARCHIVETYPE_7ZIP)
++		add_dialog->compression_value = gtk_adjustment_new (default_value, 0, max_value, 2, 2, 0);
++	else if (archive->type == XARCHIVETYPE_LHA)
++		add_dialog->compression_value = gtk_adjustment_new (default_value, 5, max_value, 7, 7, 0);
++	else
++		add_dialog->compression_value = gtk_adjustment_new (default_value, 0, max_value, 0, 0, 0);
++
++	add_dialog->compression_scale = gtk_hscale_new (GTK_ADJUSTMENT(add_dialog->compression_value));
++	if (gtk_bin_get_child(GTK_BIN(add_dialog->alignment2)) == NULL)
++		gtk_container_add (GTK_CONTAINER (add_dialog->alignment2), add_dialog->compression_scale);
++	gtk_scale_set_value_pos (GTK_SCALE (add_dialog->compression_scale), GTK_POS_TOP);
++	gtk_scale_set_digits (GTK_SCALE (add_dialog->compression_scale), 0);
++
++	if (archive->compression_level == 0)
++		archive->compression_level = default_value;
++
++	gtk_widget_set_sensitive(add_dialog->compression_scale,flag);
++	gtk_adjustment_set_value (GTK_ADJUSTMENT(add_dialog->compression_value), archive->compression_level);
++
++	if (archive->type == XARCHIVETYPE_ARJ)
++		gtk_range_set_inverted (GTK_RANGE (add_dialog->compression_scale), TRUE);
++	else if (archive->type == XARCHIVETYPE_7ZIP)
++		g_signal_connect (G_OBJECT (add_dialog->compression_value),"value-changed",G_CALLBACK (fix_adjustment_value), NULL);
++	gtk_tooltips_set_tip (add_dialog->option_tooltip,add_dialog->compression_scale, compression_msg, NULL );
++
++	if (archive->type == XARCHIVETYPE_TAR || archive->type == XARCHIVETYPE_TAR_GZ || archive->type == XARCHIVETYPE_TAR_LZMA || archive->type == XARCHIVETYPE_TAR_BZ2 || archive->type == XARCHIVETYPE_TAR_LZOP)
++		flag = FALSE;
++	else
++		flag = TRUE;
++
++	gtk_widget_set_sensitive(add_dialog->add_password,flag);
++	gtk_widget_show_all (add_dialog->dialog_vbox1);
++}
++
++void add_fresh_update_toggled_cb (GtkToggleButton *button, Add_dialog_data *data)
++{
++	gboolean active = gtk_toggle_button_get_active (button);
++	if (active)
++		gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (data->update), FALSE);
++}
++
++void add_update_fresh_toggled_cb (GtkToggleButton *button, Add_dialog_data *data)
++{
++	if (data->freshen == NULL)
++		return;
++	gboolean active = gtk_toggle_button_get_active (button);
++	if (active)
++		gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (data->freshen), FALSE);
++}
++
++void password_toggled_cb ( GtkButton* button , gpointer _add_dialog )
++{
++	Add_dialog_data *add_dialog = _add_dialog;
++	if ( gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(add_dialog->add_password)) )
++	{
++		gtk_widget_set_sensitive (add_dialog->add_password_entry, TRUE);
++		gtk_widget_grab_focus (add_dialog->add_password_entry);
++	}
++	else
++		gtk_widget_set_sensitive (add_dialog->add_password_entry, FALSE);
++}
++
++void fix_adjustment_value (GtkAdjustment *adjustment, gpointer user_data)
++{
++	unsigned short int digit = gtk_adjustment_get_value (adjustment);
++	if (digit & 1)
++		return;
++	else
++		gtk_adjustment_set_value (adjustment, digit-1);
++}
++
++void xa_parse_add_dialog_options (XArchive *archive,Add_dialog_data *add_dialog)
++{
++	gchar *temp_password = NULL;
++	gchar *compression_string = NULL;
++	gboolean done = FALSE;
++	GSList *list = NULL;
++	int response;
++
++	while ( ! done )
++	{
++		switch (gtk_dialog_run(GTK_DIALOG(add_dialog->dialog1)))
++		{
++			case GTK_RESPONSE_CANCEL:
++			case GTK_RESPONSE_DELETE_EVENT:
++			done = TRUE;
++			break;
++
++			case GTK_RESPONSE_OK:
++			list = gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(add_dialog->filechooserwidget1));
++			if (g_slist_length(list) == 0)
++			{
++				response = xa_show_message_dialog (GTK_WINDOW (xa_main_window),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_OK,_("Can't add files to the archive:"), _("You haven't selected any files to add!") );
++				break;
++			}
++			if ( add_dialog->add_password != NULL && gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(add_dialog->add_password)) )
++			{
++				temp_password  = g_strdup (gtk_entry_get_text ( GTK_ENTRY (add_dialog->add_password_entry) ));
++				if (strlen(temp_password) == 0)
++				{
++					response = xa_show_message_dialog (GTK_WINDOW (xa_main_window),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_OK, _("You missed the password!"),_("Please enter it!") );
++					g_free (temp_password);
++					break;
++				}
++				else
++					archive->passwd = temp_password;
++			}
++			else if (archive->passwd != NULL)
++			{
++				g_free(archive->passwd);
++				archive->passwd = NULL;
++			}
++
++			done = TRUE;
++			if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(add_dialog->store_path)))
++				archive->full_path = TRUE;
++			else
++				archive->full_path = FALSE;
++			archive->add_recurse = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (add_dialog->recurse));
++
++			if (add_dialog->update != NULL)
++				archive->update = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (add_dialog->update));
++
++			if (add_dialog->remove_files != NULL)
++				archive->remove_files = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (add_dialog->remove_files));
++
++			if (GTK_WIDGET_IS_SENSITIVE(add_dialog->freshen))
++				archive->freshen = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (add_dialog->freshen));
++
++			if (GTK_WIDGET_IS_SENSITIVE(add_dialog->solid_archive))
++				archive->solid_archive = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (add_dialog->solid_archive));
++
++			if (GTK_WIDGET_IS_SENSITIVE(add_dialog->compression_scale))
++			{
++				archive->compression_level = gtk_adjustment_get_value(GTK_ADJUSTMENT (add_dialog->compression_value));
++				compression_string = g_strdup_printf("%d",archive->compression_level);
++			}
++			gtk_widget_hide(add_dialog->dialog1);
++
++			if (!archive->full_path)
++			{
++				if (archive->working_dir != NULL)
++				{
++					g_free(archive->working_dir);
++					archive->working_dir = NULL;
++				}
++				archive->working_dir = g_path_get_dirname(list->data);
++			}
++			xa_execute_add_commands (archive,list,compression_string);
++			if (compression_string != NULL)
++				g_free (compression_string);
++		}
++	}
++	gtk_widget_hide (add_dialog->dialog1);
++}
++
++void xa_execute_add_commands (XArchive *archive,GSList *list,gchar *compression_string)
++{
++	gchar *new_path = NULL;
++	gchar *esc,*esc2,*basedir;
++	gboolean result = FALSE;
++	GString *items;
++	gchar *command = NULL;
++	GSList *slist = NULL;
++	GSList *cmd_list = NULL;
++	GSList *dirlist = NULL;
++	GString *files = g_string_new("");
++
++	if (xa_main_window)
++	{
++		gtk_label_set_text(GTK_LABEL(total_label),_("Adding files to archive, please wait..."));
++		/* This in case the user wants to add files in a directory in the archive tree */
++		if (archive->location_entry_path != NULL)
++		{
++			result = xa_create_temp_directory(archive);
++			if (result == FALSE)
++				return;
++
++			items = g_string_new("");
++			new_path = g_strconcat (archive->tmp,"/",archive->location_entry_path,NULL);
++			result = g_mkdir_with_parents(new_path,0700);
++			if (result < 0)
++			{
++				g_free(new_path);
++				return;
++			}
++			slist = list;
++			basedir = g_path_get_dirname(slist->data);
++			while (slist)
++			{
++				esc  = xa_escape_bad_chars (slist->data,"\\");
++				esc2 = xa_escape_bad_chars (esc,"$'`\"\\!?* ()[]&|:;<>#");
++				g_free (esc);
++				g_string_append(items,esc2);
++				g_string_append_c(items,' ');
++				slist = slist->next;
++			}
++			g_free(basedir);
++			command = g_strconcat ("cp -rf ",items->str," ",new_path,NULL);
++			g_free(new_path);
++			g_string_free(items,TRUE);
++			cmd_list = g_slist_append(cmd_list,command);
++			xa_run_command (archive,cmd_list);
++		}
++		archive->status = XA_ARCHIVESTATUS_ADD;
++		xa_set_button_state (0,0,0,0,0,0,0,0,0,0,0);
++	}
++
++	while (list)
++	{
++		xa_recurse_local_directory((gchar*)list->data,&dirlist,archive->add_recurse,archive->type);
++		list = list->next;
++	}
++ 	xa_cat_filenames(archive,dirlist,files);
++	g_slist_foreach(dirlist,(GFunc)g_free,NULL);
++	g_slist_free(dirlist);
++	(*archive->add) (archive,files,compression_string);
++}
+--- xarchiver-0.5.2+20130119+dfsg-3-sid.orig/src/archive.h
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/archive.h
+@@ -30,6 +30,7 @@ typedef enum
+ 	XARCHIVETYPE_BZIP2,
+ 	XARCHIVETYPE_GZIP,
+ 	XARCHIVETYPE_LZMA,
++	XARCHIVETYPE_XZ,
+ 	XARCHIVETYPE_LZOP,
+ 	XARCHIVETYPE_RAR,
+ 	XARCHIVETYPE_RPM,
+@@ -37,6 +38,7 @@ typedef enum
+ 	XARCHIVETYPE_TAR_BZ2,
+ 	XARCHIVETYPE_TAR_GZ,
+ 	XARCHIVETYPE_TAR_LZMA,
++	XARCHIVETYPE_TAR_XZ,
+ 	XARCHIVETYPE_TAR_LZOP,
+ 	XARCHIVETYPE_ZIP,
+ 	XARCHIVETYPE_LHA,
+--- xarchiver-0.5.2+20130119+dfsg-3-sid.orig/src/bzip2.c
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/bzip2.c
+@@ -54,6 +54,15 @@ void xa_open_bzip2_lzma (XArchive *archi
+ 		archive->extract = 	extract[archive->type];
+ 		xa_open_tar_compressed_file(archive);
+ 	}
++	else if (g_str_has_suffix(archive->escaped_path,".tar.xz") || g_str_has_suffix (archive->escaped_path,".txz"))
++	{
++		archive->type = XARCHIVETYPE_TAR_XZ;
++		archive->format = "TAR.XZ";
++		archive->delete =	delete[archive->type];
++		archive->add = 		add[archive->type];
++		archive->extract = 	extract[archive->type];
++		xa_open_tar_compressed_file(archive);
++	}
+ 	else if (g_str_has_suffix(archive->escaped_path,".tar.lzop") ||
+ 		g_str_has_suffix (archive->escaped_path,".tzo") ||
+ 		g_str_has_suffix(archive->escaped_path,".tar.lzo"))
+@@ -85,6 +94,12 @@ void xa_open_bzip2_lzma (XArchive *archi
+ 			executable = "lzma ";
+ 			len = 5;
+ 		}
++		else if (archive->type == XARCHIVETYPE_XZ)
++		{
++			archive->format = "XZ";
++			executable = "xz ";
++			len = 5;
++		}
+ 		else if (archive->type == XARCHIVETYPE_LZOP)
+ 		{
+ 			archive->format = "LZOP";
+@@ -163,6 +178,8 @@ void xa_open_tar_compressed_file(XArchiv
+ 		command = g_strconcat(tar," tfjv ",archive->escaped_path,NULL);
+ 	else if (archive->type == XARCHIVETYPE_TAR_LZMA)
+ 		command = g_strconcat(tar," tv --use-compress-program=lzma -f ",archive->escaped_path,NULL);
++	else if (archive->type == XARCHIVETYPE_TAR_XZ)
++		command = g_strconcat(tar," tv --use-compress-program=xz -f ",archive->escaped_path,NULL);
+ 	else if (archive->type == XARCHIVETYPE_TAR_LZOP)
+ 		command = g_strconcat(tar," tv --use-compress-program=lzop -f ",archive->escaped_path,NULL);
+ 	/* else fail? */
+@@ -205,6 +222,11 @@ gboolean lzma_bzip2_extract (XArchive *a
+ 		executable = "lzma ";
+ 		len = 5;
+ 	}
++	else if (archive->type == XARCHIVETYPE_XZ)
++	{
++		executable = "xz ";
++		len = 5;
++	}
+ 	else if (archive->type == XARCHIVETYPE_LZOP)
+ 	{
+ 		executable = "lzop ";
+--- xarchiver-0.5.2+20130119+dfsg-3-sid.orig/src/extract_dialog.c
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/extract_dialog.c
+@@ -809,6 +809,11 @@ static gchar *xa_multi_extract_archive(M
+ 		archive->type = XARCHIVETYPE_TAR_LZMA;
+ 		archive->extract = 	extract[XARCHIVETYPE_TAR_LZMA];
+ 	}
++	else if (g_str_has_suffix(archive->escaped_path,".tar.xz")|| g_str_has_suffix (archive->escaped_path,".txz"))
++	{
++		archive->type = XARCHIVETYPE_TAR_XZ;
++		archive->extract = 	extract[XARCHIVETYPE_TAR_XZ];
++	}
+ 	else if (g_str_has_suffix(archive->escaped_path,".tar.lzop") ||
+ 			g_str_has_suffix (archive->escaped_path,".tzo") ||
+ 			g_str_has_suffix(archive->escaped_path,".tar.lzo"))
+--- /dev/null
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/extract_dialog.c.orig
+@@ -0,0 +1,822 @@
++/*
++ *  Copyright (C)2008 Giuseppe Torelli - <colossus73@gmail.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License,or
++ *  (at your option)any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not,write to the Free Software
++ *  Foundation,Inc.,59 Temple Street #330,Boston,MA 02111-1307,USA.
++ */
++
++#include <gtk/gtk.h>
++#include <stdlib.h>
++#include "extract_dialog.h"
++#include "sexy-icon-entry.h"
++#include "window.h"
++#include "string_utils.h"
++#include "support.h"
++
++extern gboolean unrar,batch_mode;
++extern Prefs_dialog_data *prefs_window;
++extern Progress_bar_data *pb;
++extern extract_func extract	[XARCHIVETYPE_COUNT];
++gchar *rar;
++
++static gchar *xa_multi_extract_archive(Multi_extract_data *,gchar *,gboolean,gboolean,gchar *);
++static void xa_select_where_to_extract(SexyIconEntry *,SexyIconEntryPosition ,int ,Multi_extract_data *);
++static void xa_remove_files_liststore (GtkWidget *,Multi_extract_data *);
++static void xa_multi_extract_dialog_select_files_to_add (GtkButton*,Multi_extract_data *);
++static void xa_multi_extract_dialog_selection_changed(GtkTreeSelection *selection,Multi_extract_data *);
++static void remove_foreach_func (GtkTreeModel *,GtkTreePath *,GtkTreeIter *,GList **);
++static void xa_multi_extract_dialog_drag_data_received (GtkWidget *,GdkDragContext *,int x,int y,GtkSelectionData *,unsigned int,unsigned int,gpointer );
++static const GtkTargetEntry drop_targets[] =
++{
++	{ "text/uri-list",0,0 },
++};
++
++Extract_dialog_data *xa_create_extract_dialog()
++{
++	Extract_dialog_data *dialog_data;
++
++	dialog_data = g_new0 (Extract_dialog_data,1);
++	dialog_data->dialog1 = gtk_dialog_new();
++
++	gtk_window_set_position (GTK_WINDOW (dialog_data->dialog1),GTK_WIN_POS_CENTER_ON_PARENT);
++	gtk_window_set_type_hint (GTK_WINDOW (dialog_data->dialog1),GDK_WINDOW_TYPE_HINT_DIALOG);
++	gtk_dialog_set_has_separator (GTK_DIALOG(dialog_data->dialog1),FALSE);
++	gtk_window_set_destroy_with_parent(GTK_WINDOW (dialog_data->dialog1),TRUE);
++
++	option_tooltip = gtk_tooltips_new ();
++	dialog_data->dialog_vbox1 = GTK_DIALOG (dialog_data->dialog1)->vbox;
++
++	vbox1 = gtk_vbox_new (FALSE,2);
++	gtk_box_pack_start (GTK_BOX (dialog_data->dialog_vbox1),vbox1,TRUE,TRUE,0);
++	gtk_container_set_border_width (GTK_CONTAINER (vbox1),2);
++
++	label1 = gtk_label_new (_("Extract to:"));
++	gtk_box_pack_start (GTK_BOX (vbox1),label1,FALSE,FALSE,0);
++	gtk_misc_set_alignment (GTK_MISC (label1),0,0.5);
++
++	dialog_data->destination_path_entry = sexy_icon_entry_new();
++	sexy_icon_entry_add_clear_button( SEXY_ICON_ENTRY(dialog_data->destination_path_entry),dialog_data,xa_select_where_to_extract);
++    sexy_icon_entry_set_icon_highlight( SEXY_ICON_ENTRY(dialog_data->destination_path_entry),SEXY_ICON_ENTRY_PRIMARY,TRUE );
++	gtk_box_pack_start (GTK_BOX (vbox1),dialog_data->destination_path_entry,FALSE,FALSE,0);
++
++	hbox1 = gtk_hbox_new (TRUE,10);
++	gtk_box_pack_start (GTK_BOX (vbox1),hbox1,TRUE,TRUE,0);
++
++	vbox2 = gtk_vbox_new (FALSE,5);
++	gtk_box_pack_start (GTK_BOX (hbox1),vbox2,TRUE,TRUE,0);
++
++	frame1 = gtk_frame_new (NULL);
++	gtk_box_pack_start (GTK_BOX (vbox2),frame1,TRUE,TRUE,0);
++	gtk_frame_set_shadow_type (GTK_FRAME (frame1),GTK_SHADOW_OUT);
++
++	alignment1 = gtk_alignment_new (0.5,0.5,1,1);
++	gtk_container_add (GTK_CONTAINER (frame1),alignment1);
++	gtk_alignment_set_padding (GTK_ALIGNMENT (alignment1),0,0,12,0);
++
++	vbox3 = gtk_vbox_new (FALSE,0);
++	gtk_container_add (GTK_CONTAINER (alignment1),vbox3);
++
++	dialog_data->all_files_radio = gtk_radio_button_new_with_mnemonic (NULL,_("All files"));
++	gtk_box_pack_start (GTK_BOX (vbox3),dialog_data->all_files_radio,FALSE,FALSE,0);
++	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (dialog_data->all_files_radio), TRUE);
++
++	dialog_data->selected_radio = gtk_radio_button_new_with_mnemonic_from_widget (GTK_RADIO_BUTTON (dialog_data->all_files_radio),_("Selected files"));
++	gtk_box_pack_start (GTK_BOX (vbox3),dialog_data->selected_radio,FALSE,FALSE,0);
++	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (dialog_data->selected_radio), TRUE);
++
++	hbox2 = gtk_hbox_new (FALSE,0);
++	gtk_box_pack_start (GTK_BOX (vbox3),hbox2,FALSE,FALSE,0);
++
++	dialog_data->files_radio = gtk_radio_button_new_with_mnemonic_from_widget (GTK_RADIO_BUTTON (dialog_data->all_files_radio),_("Files: "));
++	gtk_box_pack_start (GTK_BOX (hbox2),dialog_data->files_radio,FALSE,FALSE,0);
++	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (dialog_data->files_radio), TRUE);
++
++	dialog_data->entry2 = gtk_entry_new ();
++	gtk_box_pack_start (GTK_BOX (hbox2),dialog_data->entry2,TRUE,TRUE,0);
++	gtk_entry_set_width_chars (GTK_ENTRY (dialog_data->entry2),10);
++	gtk_widget_set_sensitive(dialog_data->entry2,FALSE);
++	g_signal_connect (G_OBJECT (dialog_data->files_radio),"toggled",G_CALLBACK(xa_activate_entry),dialog_data);
++
++	label2 = gtk_label_new (_("Files "));
++	gtk_frame_set_label_widget (GTK_FRAME (frame1),label2);
++
++	frame2 = gtk_frame_new (NULL);
++	gtk_box_pack_start (GTK_BOX (vbox2),frame2,TRUE,TRUE,0);
++	gtk_frame_set_shadow_type (GTK_FRAME (frame2),GTK_SHADOW_OUT);
++
++	alignment2 = gtk_alignment_new (0.5,0.5,1,1);
++	gtk_container_add (GTK_CONTAINER (frame2),alignment2);
++	gtk_alignment_set_padding (GTK_ALIGNMENT (alignment2),0,0,12,0);
++
++	vbox5 = gtk_vbox_new (FALSE,0);
++	gtk_container_add (GTK_CONTAINER (alignment2),vbox5);
++
++	dialog_data->overwrite_check = gtk_check_button_new_with_mnemonic (_("Overwrite existing files"));
++	gtk_box_pack_start (GTK_BOX (vbox5),dialog_data->overwrite_check,FALSE,FALSE,0);
++
++	dialog_data->extract_full = gtk_check_button_new_with_mnemonic (_("Extract files with full path"));
++	gtk_tooltips_set_tip(option_tooltip,dialog_data->extract_full,_("The archive's directory structure is recreated in the extraction directory"),NULL );
++	gtk_box_pack_start (GTK_BOX (vbox5),dialog_data->extract_full,FALSE,FALSE,0);
++
++	dialog_data->touch = gtk_check_button_new_with_mnemonic (_("Touch files"));
++	gtk_tooltips_set_tip (option_tooltip,dialog_data->touch,_("When this option is used,tar leaves the data modification times of the files it extracts as the times when the files were extracted,instead of setting it to the times recorded in the archive"),NULL );
++	gtk_box_pack_start (GTK_BOX (vbox5),dialog_data->touch,FALSE,FALSE,0);
++
++	dialog_data->fresh = gtk_check_button_new_with_mnemonic (_("Freshen existing files"));
++	gtk_tooltips_set_tip (option_tooltip,dialog_data->fresh,_("Extract only those files that already exist on disk and that are newer than the disk copies"),NULL );
++	gtk_box_pack_start (GTK_BOX (vbox5),dialog_data->fresh,FALSE,FALSE,0);
++	g_signal_connect (G_OBJECT (dialog_data->fresh),"toggled",G_CALLBACK (fresh_update_toggled_cb),dialog_data);
++
++	dialog_data->update = gtk_check_button_new_with_mnemonic (_("Update existing files"));
++	gtk_tooltips_set_tip (option_tooltip,dialog_data->update,_("This option performs the same function as the freshen one,extracting files that are newer than those with the same name on disk,and in addition it extracts those files that do not already exist on disk"),NULL );
++	gtk_box_pack_start (GTK_BOX (vbox5),dialog_data->update,FALSE,FALSE,0);
++	g_signal_connect (G_OBJECT (dialog_data->update),"toggled",G_CALLBACK (update_fresh_toggled_cb),dialog_data);
++
++	label3 = gtk_label_new (_("Options "));
++	gtk_frame_set_label_widget (GTK_FRAME (frame2),label3);
++
++	hbox3 = gtk_hbox_new (FALSE,0);
++	gtk_box_pack_start (GTK_BOX (vbox5),hbox3,TRUE,TRUE,0);
++
++	label_password = gtk_label_new (_("Password:"));
++	gtk_box_pack_start (GTK_BOX (hbox3),label_password,FALSE,FALSE,0);
++
++	dialog_data->password_entry = gtk_entry_new ();
++	gtk_box_pack_start (GTK_BOX (hbox3),dialog_data->password_entry,TRUE,TRUE,0);
++	gtk_entry_set_visibility (GTK_ENTRY (dialog_data->password_entry),FALSE);
++
++	dialog_action_area1 = GTK_DIALOG (dialog_data->dialog1)->action_area;
++	gtk_button_box_set_layout (GTK_BUTTON_BOX (dialog_action_area1),GTK_BUTTONBOX_END);
++
++	cancel_button = gtk_button_new_from_stock(GTK_STOCK_CANCEL);
++	gtk_dialog_add_action_widget (GTK_DIALOG (dialog_data->dialog1),cancel_button,GTK_RESPONSE_CANCEL);
++	GTK_WIDGET_SET_FLAGS (cancel_button,GTK_CAN_DEFAULT);
++
++	extract_button = gtk_button_new();
++	extract_image = xa_main_window_find_image("xarchiver-extract.png",GTK_ICON_SIZE_SMALL_TOOLBAR);
++	extract_hbox = gtk_hbox_new(FALSE,4);
++	extract_label = gtk_label_new_with_mnemonic(_("_Extract"));
++
++	alignment3 = gtk_alignment_new (0.5,0.5,0,0);
++	gtk_container_add (GTK_CONTAINER (alignment3),extract_hbox);
++	gtk_box_pack_start(GTK_BOX(extract_hbox),extract_image,FALSE,FALSE,0);
++	gtk_box_pack_start(GTK_BOX(extract_hbox),extract_label,FALSE,FALSE,0);
++	gtk_container_add(GTK_CONTAINER(extract_button),alignment3);
++
++	gtk_dialog_add_action_widget (GTK_DIALOG (dialog_data->dialog1),extract_button,GTK_RESPONSE_OK);
++	GTK_WIDGET_SET_FLAGS (extract_button,GTK_CAN_DEFAULT);
++	gtk_dialog_set_default_response (GTK_DIALOG (dialog_data->dialog1),GTK_RESPONSE_OK);
++	return dialog_data;
++}
++
++void xa_activate_entry(GtkToggleButton *button,gpointer data)
++{
++	Extract_dialog_data *dialog = data;
++
++	if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(dialog->files_radio)))
++	{
++		gtk_widget_set_sensitive (dialog->entry2,TRUE);
++		gtk_widget_grab_focus (dialog->entry2);
++	}
++	else
++		gtk_widget_set_sensitive (dialog->entry2,FALSE);
++}
++
++void fresh_update_toggled_cb (GtkToggleButton *button,Extract_dialog_data *data)
++{
++	gboolean active = gtk_toggle_button_get_active(button);
++	if (active)
++		gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (data->update),FALSE);
++}
++
++void update_fresh_toggled_cb (GtkToggleButton *button,Extract_dialog_data *data)
++{
++	if (data->fresh == NULL)
++		return;
++	gboolean active = gtk_toggle_button_get_active (button);
++	if (active)
++		gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (data->fresh),FALSE);
++}
++
++void xa_set_extract_dialog_options(Extract_dialog_data *dialog_data,gint selected,XArchive *archive)
++{
++	gchar *archive_dir = NULL;
++	gboolean flag = TRUE;
++
++	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(prefs_window->check_save_geometry))&& prefs_window->extract_dialog[0] != -1)
++		gtk_window_set_default_size (GTK_WINDOW(dialog_data->dialog1),prefs_window->extract_dialog[0],prefs_window->extract_dialog[1]);
++	else
++		gtk_widget_set_size_request (dialog_data->dialog1,-1,370);
++
++	if (archive->type == XARCHIVETYPE_BZIP2 || archive->type == XARCHIVETYPE_GZIP || archive->type == XARCHIVETYPE_LZMA || archive->type == XARCHIVETYPE_LZOP)
++		gtk_window_set_title (GTK_WINDOW (dialog_data->dialog1),_("Decompress file"));
++	else
++		gtk_window_set_title (GTK_WINDOW (dialog_data->dialog1),_("Extract files"));
++
++	if (archive->type != XARCHIVETYPE_RPM)
++	{
++		if (selected)
++		{
++			gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (dialog_data->selected_radio),TRUE);
++			gtk_widget_set_sensitive (dialog_data->selected_radio,TRUE);
++		}
++		else
++		{
++			gtk_widget_set_sensitive (dialog_data->selected_radio,FALSE);
++			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (dialog_data->all_files_radio),TRUE);
++		}
++	}
++	else
++		gtk_widget_set_sensitive (dialog_data->selected_radio,FALSE);
++
++	if ( (xa_main_window == NULL && is_tar_compressed(archive->type)) || archive->type == XARCHIVETYPE_GZIP || archive->type == XARCHIVETYPE_LZMA || archive->type == XARCHIVETYPE_BZIP2 || archive->type == XARCHIVETYPE_RPM || archive->type == XARCHIVETYPE_LZOP)
++		flag = FALSE;
++	gtk_widget_set_sensitive (dialog_data->extract_full,flag);
++
++	if (archive->type != XARCHIVETYPE_TAR && archive->type != XARCHIVETYPE_TAR_GZ && archive->type != XARCHIVETYPE_TAR_LZMA && archive->type != XARCHIVETYPE_TAR_BZ2 && archive->type != XARCHIVETYPE_DEB && archive->type != XARCHIVETYPE_TAR_LZOP)
++		flag = FALSE;
++	else
++		flag = TRUE;
++	gtk_widget_set_sensitive (dialog_data->touch,flag);
++
++	if (archive->type == XARCHIVETYPE_RAR || archive->type == XARCHIVETYPE_ZIP || archive->type == XARCHIVETYPE_ARJ)
++		flag = TRUE;
++	else
++		flag = FALSE;
++
++	gtk_widget_set_sensitive(dialog_data->fresh,flag);
++	gtk_widget_set_sensitive(dialog_data->update,flag);
++	
++	if (archive->extraction_path == NULL)
++	{
++		archive_dir = xa_remove_level_from_path (archive->path);
++		gtk_entry_set_text (GTK_ENTRY(dialog_data->destination_path_entry),archive_dir);
++	}
++	g_free(archive_dir);
++	if (archive->has_passwd || ! xa_main_window)
++    {
++		gtk_widget_set_sensitive (label_password,TRUE);
++		gtk_widget_set_sensitive (dialog_data->password_entry,TRUE);
++		if (archive->passwd != NULL)
++			gtk_entry_set_text (GTK_ENTRY(dialog_data->password_entry),archive->passwd);
++    }
++	else
++	{
++		gtk_widget_set_sensitive (label_password,FALSE);
++		gtk_widget_set_sensitive (dialog_data->password_entry,FALSE);
++	}
++	gtk_widget_show_all(dialog_data->dialog1);
++}
++
++void xa_parse_extract_dialog_options (XArchive *archive,Extract_dialog_data *dialog_data,GtkTreeSelection *selection)
++{
++	gchar *destination_path = NULL,*string;
++	gboolean done = FALSE;
++	GSList *names = NULL;
++	GtkTreeModel *model;
++	int response;
++
++	if (unrar)
++		rar = "unrar";
++	else
++		rar = "rar";
++
++    while (! done)
++	{
++		switch (gtk_dialog_run(GTK_DIALOG(dialog_data->dialog1)))
++		{
++			case GTK_RESPONSE_CANCEL:
++			case GTK_RESPONSE_DELETE_EVENT:
++			done = TRUE;
++			if (xa_main_window && (archive->type == XARCHIVETYPE_GZIP || archive->type == XARCHIVETYPE_LZMA || archive->type == XARCHIVETYPE_BZIP2 || archive->type == XARCHIVETYPE_LZOP))
++			{
++				gtk_widget_set_sensitive (Stop_button,FALSE);
++				xa_set_button_state (1,1,GTK_WIDGET_IS_SENSITIVE(save1),GTK_WIDGET_IS_SENSITIVE(close1),0,0,0,0,0,0,0);
++				archive->status = XA_ARCHIVESTATUS_IDLE;
++			}
++			break;
++
++			case GTK_RESPONSE_OK:
++			destination_path = g_strdup (gtk_entry_get_text (GTK_ENTRY (dialog_data->destination_path_entry)));
++			archive->extraction_path = xa_escape_bad_chars (destination_path,"$\'`\"\\!?* ()&|@#:;");
++
++			if (strlen(archive->extraction_path)== 0)
++			{
++				response = xa_show_message_dialog (GTK_WINDOW (xa_main_window),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_OK,_("You missed where to extract the files!"),_("Please enter the extraction path."));
++				break;
++			}
++			if (archive->extraction_path[0] != '/')
++			{
++				gchar *cur_dir = g_get_current_dir();
++				archive->extraction_path = g_strconcat(cur_dir,"/",archive->extraction_path,NULL);
++				g_free (cur_dir);
++			}
++			if (archive->has_passwd || (xa_main_window == FALSE && strlen(gtk_entry_get_text(GTK_ENTRY(dialog_data->password_entry))) > 0) )
++				archive->passwd  = g_strdup (gtk_entry_get_text (GTK_ENTRY(dialog_data->password_entry)));
++
++			if (archive->has_passwd && strlen(archive->passwd)== 0 )
++			{
++				response = xa_show_message_dialog (GTK_WINDOW (xa_main_window),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_OK,_("This archive is encrypted!"),_("Please enter the password."));
++				break;
++			}
++
++			if (g_file_test (destination_path,G_FILE_TEST_IS_DIR)&& access (destination_path,R_OK | W_OK | X_OK ))
++			{
++				gchar *utf8_path;
++				gchar  *msg;
++
++                utf8_path = g_filename_to_utf8 (destination_path,-1,NULL,NULL,NULL);
++                msg = g_strdup_printf (_("You don't have the right permissions to extract the files to the directory \"%s\"."),utf8_path);
++				response = xa_show_message_dialog (GTK_WINDOW (xa_main_window),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_OK,_("Can't perform extraction!"),msg );
++                g_free (utf8_path);
++				g_free (msg);
++				g_free (destination_path);
++				break;
++			}
++			done = TRUE;
++			g_free (destination_path);
++
++			archive->overwrite = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialog_data->overwrite_check));
++			archive->tar_touch = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialog_data->touch));
++			if (xa_main_window)
++				archive->full_path = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialog_data->extract_full));
++			else
++				archive->full_path = TRUE;
++			archive->freshen   = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialog_data->fresh));
++			archive->update    = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialog_data->update));
++
++			gtk_widget_hide (dialog_data->dialog1);
++			archive->status = XA_ARCHIVESTATUS_EXTRACT;
++			/* Is the radiobutton Files selected? */
++			if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (dialog_data->files_radio)))
++			{
++				model = gtk_tree_view_get_model(GTK_TREE_VIEW(archive->treeview));
++				string = g_strdup (gtk_entry_get_text(GTK_ENTRY(dialog_data->entry2)));
++				gtk_tree_model_foreach(model,(GtkTreeModelForeachFunc)select_matched_rows,string);
++				selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(archive->treeview));
++				gtk_tree_selection_selected_foreach(selection,(GtkTreeSelectionForeachFunc)xa_concat_selected_filenames,&names);
++				g_free(string);
++			}
++			else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (dialog_data->selected_radio)))
++				gtk_tree_selection_selected_foreach(selection,(GtkTreeSelectionForeachFunc)xa_concat_selected_filenames,&names);
++			if (xa_main_window)
++			{
++				xa_set_button_state (0,0,0,0,0,0,0,0,0,0,0);
++				gtk_widget_set_sensitive (Stop_button,TRUE);
++				gtk_label_set_text(GTK_LABEL(total_label),_("Extracting files from archive,please wait..."));
++			}
++			(*archive->extract)(archive,names);
++		}
++	}
++	gtk_widget_hide (dialog_data->dialog1);
++}
++
++Multi_extract_data *xa_create_multi_extract_dialog()
++{
++	Multi_extract_data *dialog_data;
++	GtkWidget	*dialog_vbox1,*vbox1,*scrolledwindow1,*hbox1,*frame1,*alignment1,*vbox2,*hbox3,*remove_button,*add_button,*cancelbutton1;
++	GtkCellRenderer *renderer;
++	GtkTreeSelection *selection;
++	GtkTreeViewColumn *column;
++	GSList *radiobutton1_group = NULL;
++	GtkTooltips *multi_tooltip;
++	char *column_names[]= {(_("Archive Name")),(_("Size")),(_("Path")),NULL};
++	int x;
++
++	multi_tooltip = gtk_tooltips_new ();
++	dialog_data = g_new0 (Multi_extract_data,1);
++	dialog_data->multi_extract = gtk_dialog_new();
++
++	gtk_window_set_position (GTK_WINDOW (dialog_data->multi_extract),GTK_WIN_POS_CENTER_ON_PARENT);
++	gtk_window_set_type_hint (GTK_WINDOW (dialog_data->multi_extract),GDK_WINDOW_TYPE_HINT_DIALOG);
++	gtk_window_set_destroy_with_parent (GTK_WINDOW (dialog_data->multi_extract),TRUE);
++	gtk_widget_set_size_request(dialog_data->multi_extract,-1,300);
++	gtk_dialog_set_has_separator (GTK_DIALOG (dialog_data->multi_extract),FALSE);
++	gtk_window_set_title (GTK_WINDOW (dialog_data->multi_extract),_("Multi-Extract"));
++
++	dialog_vbox1 = GTK_DIALOG (dialog_data->multi_extract)->vbox;
++	vbox1 = gtk_vbox_new (FALSE,5);
++	gtk_box_pack_start (GTK_BOX (dialog_vbox1),vbox1,TRUE,TRUE,0);
++	scrolledwindow1 = gtk_scrolled_window_new (NULL,NULL);
++	gtk_box_pack_start (GTK_BOX (vbox1),scrolledwindow1,TRUE,TRUE,0);
++	gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scrolledwindow1),GTK_POLICY_AUTOMATIC,GTK_POLICY_AUTOMATIC);
++	gtk_scrolled_window_set_shadow_type (GTK_SCROLLED_WINDOW (scrolledwindow1),GTK_SHADOW_IN);
++
++	dialog_data->files_liststore = gtk_list_store_new (4,G_TYPE_STRING,G_TYPE_UINT64,G_TYPE_STRING,G_TYPE_INT);
++	dialog_data->files_treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(dialog_data->files_liststore));
++	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(dialog_data->files_treeview));
++	g_signal_connect (selection,"changed",G_CALLBACK (xa_multi_extract_dialog_selection_changed),dialog_data);
++
++	for (x = 0; x < 3; x++)
++	{
++		renderer = gtk_cell_renderer_text_new();
++		column = gtk_tree_view_column_new_with_attributes ( column_names[x],renderer,"text",x,NULL);
++		gtk_tree_view_column_set_resizable (column,TRUE);
++		gtk_tree_view_append_column(GTK_TREE_VIEW(dialog_data->files_treeview),column);
++	}
++	column = gtk_tree_view_column_new();
++	gtk_tree_view_column_set_visible(column,FALSE);
++	gtk_tree_view_append_column(GTK_TREE_VIEW(dialog_data->files_treeview),column);
++
++	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(dialog_data->files_treeview),TRUE);
++	gtk_container_add (GTK_CONTAINER (scrolledwindow1),dialog_data->files_treeview);
++
++	gtk_drag_dest_set (dialog_data->files_treeview,GTK_DEST_DEFAULT_ALL,drop_targets,1,GDK_ACTION_COPY | GDK_ACTION_MOVE | GDK_ACTION_LINK | GDK_ACTION_ASK);
++	g_signal_connect (G_OBJECT (dialog_data->files_treeview),"drag-data-received",G_CALLBACK (xa_multi_extract_dialog_drag_data_received),dialog_data);
++	
++	hbox2 = gtk_hbox_new (TRUE,5);
++	gtk_box_pack_start (GTK_BOX (vbox1),hbox2,FALSE,TRUE,0);
++
++	add_button = gtk_button_new_from_stock ("gtk-add");
++	gtk_box_pack_end (GTK_BOX (hbox2),add_button,FALSE,FALSE,0);
++	gtk_button_set_focus_on_click (GTK_BUTTON (add_button),FALSE);
++	g_signal_connect ( (gpointer)add_button,"clicked",G_CALLBACK (xa_multi_extract_dialog_select_files_to_add),dialog_data);
++
++	remove_button = gtk_button_new_from_stock ("gtk-remove");
++	gtk_widget_set_sensitive (remove_button,FALSE);
++	gtk_box_pack_end (GTK_BOX (hbox2),remove_button,FALSE,FALSE,0);
++	gtk_button_set_focus_on_click (GTK_BUTTON (remove_button),FALSE);
++	g_signal_connect ( (gpointer)remove_button,"clicked",G_CALLBACK (xa_remove_files_liststore),dialog_data);
++	g_signal_connect (G_OBJECT (dialog_data->files_liststore),"row-inserted",G_CALLBACK (xa_activate_remove_button),remove_button);
++
++	/* Destination dirs frame */
++	hbox1 = gtk_hbox_new (TRUE,8);
++	gtk_box_pack_start (GTK_BOX (vbox1),hbox1,FALSE,TRUE,0);
++	frame1 = gtk_frame_new (NULL);
++	gtk_box_pack_start (GTK_BOX (hbox1),frame1,TRUE,TRUE,0);
++	gtk_frame_set_shadow_type (GTK_FRAME (frame1),GTK_SHADOW_OUT);
++	alignment1 = gtk_alignment_new (0.5,0.5,1,1);
++	gtk_container_add (GTK_CONTAINER (frame1),alignment1);
++	gtk_alignment_set_padding (GTK_ALIGNMENT (alignment1),0,0,12,0);
++
++	vbox2 = gtk_vbox_new (TRUE,0);
++	gtk_container_add (GTK_CONTAINER (alignment1),vbox2);
++	hbox3 = gtk_hbox_new (FALSE,2);
++	gtk_box_pack_start (GTK_BOX (vbox2),hbox3,FALSE,FALSE,0);
++	dialog_data->extract_to = gtk_radio_button_new_with_mnemonic (NULL,_("Extract to:"));
++	gtk_box_pack_start (GTK_BOX (hbox3),dialog_data->extract_to,FALSE,FALSE,0);
++	gtk_radio_button_set_group (GTK_RADIO_BUTTON (dialog_data->extract_to),radiobutton1_group);
++	radiobutton1_group = gtk_radio_button_get_group (GTK_RADIO_BUTTON (dialog_data->extract_to));
++
++	dialog_data->entry1 = sexy_icon_entry_new();
++    sexy_icon_entry_add_clear_button( SEXY_ICON_ENTRY(dialog_data->entry1),dialog_data,xa_select_where_to_extract);
++    sexy_icon_entry_set_icon_highlight( SEXY_ICON_ENTRY(dialog_data->entry1),SEXY_ICON_ENTRY_PRIMARY,TRUE );
++	gtk_box_pack_start (GTK_BOX (hbox3),dialog_data->entry1,TRUE,TRUE,0);
++
++	dialog_data->extract_to_archive_name = gtk_radio_button_new_with_mnemonic (NULL,_("Extract to dir \"Archive Name\""));
++	gtk_tooltips_set_tip (multi_tooltip,dialog_data->extract_to_archive_name,_("This option extracts archives in directories named with the archive names"),NULL);
++	gtk_box_pack_start (GTK_BOX (vbox2),dialog_data->extract_to_archive_name,FALSE,FALSE,0);
++	gtk_radio_button_set_group (GTK_RADIO_BUTTON (dialog_data->extract_to_archive_name),radiobutton1_group);
++	radiobutton1_group = gtk_radio_button_get_group (GTK_RADIO_BUTTON (dialog_data->extract_to_archive_name));
++	label1 = gtk_label_new (_("Destination dirs:"));
++	gtk_frame_set_label_widget (GTK_FRAME (frame1),label1);
++
++	/* Option frame */
++	frame2 = gtk_frame_new (NULL);
++	gtk_box_pack_start (GTK_BOX (hbox1),frame2,TRUE,TRUE,0);
++	gtk_frame_set_shadow_type (GTK_FRAME (frame2),GTK_SHADOW_OUT);
++	alignment2 = gtk_alignment_new (0.5,0.5,1,1);
++	gtk_container_add (GTK_CONTAINER (frame2),alignment2);
++	gtk_alignment_set_padding (GTK_ALIGNMENT (alignment2),0,0,12,0);
++	vbox3 = gtk_vbox_new (TRUE,0);
++	gtk_container_add (GTK_CONTAINER (alignment2),vbox3);
++	dialog_data->overwrite = gtk_check_button_new_with_mnemonic (_("Overwrite existing files"));
++	gtk_box_pack_start (GTK_BOX (vbox3),dialog_data->overwrite,FALSE,FALSE,0);
++	dialog_data->full_path = gtk_check_button_new_with_mnemonic (_("Extract pathnames"));
++	gtk_box_pack_start (GTK_BOX (vbox3),dialog_data->full_path,FALSE,FALSE,0);
++	label2 = gtk_label_new (_("Options:"));
++	gtk_frame_set_label_widget(GTK_FRAME(frame2),label2);
++
++	dialog_action_area1 = GTK_DIALOG (dialog_data->multi_extract)->action_area;
++	gtk_button_box_set_layout (GTK_BUTTON_BOX (dialog_action_area1),GTK_BUTTONBOX_END);
++	cancelbutton1 = gtk_button_new_from_stock ("gtk-cancel");
++	gtk_dialog_add_action_widget (GTK_DIALOG (dialog_data->multi_extract),cancelbutton1,GTK_RESPONSE_CANCEL);
++	GTK_WIDGET_SET_FLAGS (cancelbutton1,GTK_CAN_DEFAULT);
++	
++	extract_button = gtk_button_new();
++	extract_image = xa_main_window_find_image("xarchiver-extract.png",GTK_ICON_SIZE_SMALL_TOOLBAR);
++	extract_hbox = gtk_hbox_new(FALSE,4);
++	extract_label = gtk_label_new_with_mnemonic(_("_Extract"));
++
++	alignment3 = gtk_alignment_new (0.5,0.5,0,0);
++	gtk_container_add (GTK_CONTAINER (alignment3),extract_hbox);
++	gtk_box_pack_start(GTK_BOX(extract_hbox),extract_image,FALSE,FALSE,0);
++	gtk_box_pack_start(GTK_BOX(extract_hbox),extract_label,FALSE,FALSE,0);
++	gtk_container_add(GTK_CONTAINER(extract_button),alignment3);
++
++	gtk_dialog_add_action_widget (GTK_DIALOG (dialog_data->multi_extract),extract_button,GTK_RESPONSE_OK);
++	GTK_WIDGET_SET_FLAGS (extract_button,GTK_CAN_DEFAULT);
++	gtk_dialog_set_default_response (GTK_DIALOG (dialog_data->multi_extract),GTK_RESPONSE_OK);
++	return dialog_data;
++}
++
++void xa_multi_extract_dialog_select_files_to_add (GtkButton* button,Multi_extract_data *dialog)
++{
++	GtkWidget *file_selector;
++	GSList *dummy = NULL;
++	gint response;
++
++	file_selector = gtk_file_chooser_dialog_new (_("Please select the archives you want to extract"),
++							GTK_WINDOW (xa_main_window),
++							GTK_FILE_CHOOSER_ACTION_OPEN,
++							GTK_STOCK_CANCEL,
++							GTK_RESPONSE_CANCEL,
++							GTK_STOCK_OPEN,
++							GTK_RESPONSE_ACCEPT,
++							NULL);
++	gtk_file_chooser_set_select_multiple (GTK_FILE_CHOOSER(file_selector),TRUE);
++	response = gtk_dialog_run (GTK_DIALOG(file_selector));
++	if (response == GTK_RESPONSE_ACCEPT)
++	{
++		dummy = gtk_file_chooser_get_filenames (GTK_FILE_CHOOSER (file_selector));
++		g_slist_foreach( dummy,(GFunc)xa_add_files_liststore,dialog);
++	}
++	if (dummy != NULL)
++		g_slist_free (dummy);
++	gtk_widget_destroy(file_selector);
++	return;
++}
++
++void xa_multi_extract_dialog_selection_changed(GtkTreeSelection *selection,Multi_extract_data *dialog_data)
++{
++	GtkTreeIter iter;
++	GtkTreeModel *model;
++	gint type;
++
++	if (gtk_tree_selection_get_selected (selection,&model,&iter))
++	{
++		gtk_tree_model_get(model,&iter,3,&type,-1);
++		if (type == 4 || type == 5 || type == 6 || type == 9)
++			gtk_widget_set_sensitive(dialog_data->full_path,FALSE);
++		else
++			gtk_widget_set_sensitive(dialog_data->full_path,TRUE);
++	}
++}
++
++void xa_add_files_liststore (gchar *file_path,Multi_extract_data *dialog)
++{
++	GtkTreeIter iter;
++	gchar *file_utf8,*_file_utf8;
++	gchar *path;
++	gint type;
++	struct stat my_stat;
++	unsigned long long int file_size;
++
++	type = xa_detect_archive_type(file_path);
++	if (type < 0)
++		return;
++
++	stat (file_path,&my_stat);
++	file_size = my_stat.st_size;	
++	file_utf8 = g_filename_display_name (file_path);
++	path = xa_remove_level_from_path(file_utf8);
++	_file_utf8 = xa_remove_path_from_archive_name(file_utf8);
++	g_free (file_utf8);
++	file_utf8 = _file_utf8;
++	gtk_list_store_append(dialog->files_liststore,&iter);
++	gtk_list_store_set (dialog->files_liststore,&iter,0,file_utf8,1,file_size,2,path,3,type,-1);
++	dialog->nr++;
++	g_free (file_utf8);
++	g_free (path);
++}
++
++void xa_remove_files_liststore (GtkWidget *widget,Multi_extract_data *multi_extract_data)
++{
++	GtkTreeModel *model;
++	GtkTreeSelection *sel;
++	GtkTreePath *path;
++	GtkTreeIter iter;
++	GList *rr_list = NULL;
++	GList *node;
++
++	model = gtk_tree_view_get_model(GTK_TREE_VIEW(multi_extract_data->files_treeview));
++	sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(multi_extract_data->files_treeview));
++	gtk_tree_selection_selected_foreach(sel,(GtkTreeSelectionForeachFunc)remove_foreach_func,&rr_list);
++
++	for (node = rr_list; node != NULL; node = node->next)
++	{
++		path = gtk_tree_row_reference_get_path((GtkTreeRowReference *)node->data);
++		if (path)
++		{
++			if ( gtk_tree_model_get_iter(GTK_TREE_MODEL(model),&iter,path))
++				gtk_list_store_remove(multi_extract_data->files_liststore,&iter);
++			gtk_tree_path_free(path);
++		}
++	}
++	if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(model),&iter)== FALSE)
++		gtk_widget_set_sensitive (widget,FALSE);
++	g_list_foreach(rr_list,(GFunc)gtk_tree_row_reference_free,NULL);
++	g_list_free(rr_list);
++}
++
++static void remove_foreach_func (GtkTreeModel *model,GtkTreePath *path,GtkTreeIter *iter,GList **rowref_list)
++{
++	GtkTreeRowReference *rowref;
++
++	rowref = gtk_tree_row_reference_new(model,path);
++	*rowref_list = g_list_append(*rowref_list,rowref);
++}
++
++void xa_activate_remove_button (GtkTreeModel *tree_model,GtkTreePath *path,GtkTreeIter *iter,GtkWidget *remove_button)
++{
++	if (gtk_tree_model_get_iter_first(tree_model,iter)== TRUE)
++		gtk_widget_set_sensitive (remove_button,TRUE );
++}
++
++static void xa_multi_extract_dialog_drag_data_received (GtkWidget *widget,GdkDragContext *context,int x,int y,GtkSelectionData *data,unsigned int info,unsigned int time,gpointer user_data)
++{
++	Multi_extract_data *dialog_data = user_data;
++	gchar **array = NULL;
++	gchar *filename;
++	unsigned int len = 0;
++	GtkTreeModel *model;
++
++	model = gtk_tree_view_get_model(GTK_TREE_VIEW(widget));
++	array = gtk_selection_data_get_uris (data);
++	if (array == NULL)
++	{
++		xa_show_message_dialog(GTK_WINDOW (xa_main_window),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_OK,"",_("Sorry,I could not perform the operation!"));
++		gtk_drag_finish (context,FALSE,FALSE,time);
++		return;
++	}
++	gtk_drag_finish (context,TRUE,FALSE,time);
++	while (array[len])
++	{
++		filename = g_filename_from_uri (array[len],NULL,NULL);
++		xa_add_files_liststore (filename,dialog_data);
++		g_free (filename);
++		len++;
++	}
++	g_strfreev (array);
++}
++
++void xa_select_where_to_extract(SexyIconEntry *entry, SexyIconEntryPosition icon_pos,int button,Multi_extract_data *dialog_data)
++{
++	GtkWidget *file_selector;
++	gchar *dest_dir;
++	const char *current_path;
++	gint response;
++
++	file_selector = gtk_file_chooser_dialog_new (_("Please select the destination directory"),
++							GTK_WINDOW (xa_main_window),
++							GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
++							GTK_STOCK_CANCEL,
++							GTK_RESPONSE_CANCEL,
++							GTK_STOCK_OPEN,
++							GTK_RESPONSE_ACCEPT,
++							NULL);
++
++	current_path = gtk_entry_get_text(GTK_ENTRY(entry));
++	if (strlen(current_path) > 0)
++		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (file_selector),current_path);	
++
++	response = gtk_dialog_run (GTK_DIALOG(file_selector));
++	if (response == GTK_RESPONSE_ACCEPT)
++	{
++		dest_dir = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER (file_selector));
++		gtk_entry_set_text(GTK_ENTRY(entry),dest_dir);
++		g_free(dest_dir);
++	}
++	gtk_widget_destroy(file_selector);
++}
++
++void xa_parse_multi_extract_archive(Multi_extract_data *dialog)
++{
++	GtkTreeIter iter;
++	gchar *filename = NULL,*file,*path,*message = NULL,*name,*dest_path = NULL;
++	GString *output = g_string_new("");
++	gboolean overwrite,full_path;
++	gint response,type;
++	double percent = 0.0;
++
++	gtk_widget_show_all(dialog->multi_extract);
++run:
++	response = gtk_dialog_run(GTK_DIALOG(dialog->multi_extract));
++	if (response == GTK_RESPONSE_CANCEL || response == GTK_RESPONSE_DELETE_EVENT)
++	{
++		gtk_list_store_clear(dialog->files_liststore);
++		gtk_widget_hide(dialog->multi_extract);
++		return;
++	}
++	if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(dialog->files_liststore),&iter)== FALSE)
++	{
++		xa_show_message_dialog(GTK_WINDOW (xa_main_window),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_OK,_("Can't multi-extract archives:"),_("You haven't added any of them!"));
++		goto run;
++	}
++	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialog->extract_to)))
++	{
++		dest_path = g_strdup(gtk_entry_get_text(GTK_ENTRY(dialog->entry1)));
++		if (strlen(dest_path)== 0)
++		{
++			xa_show_message_dialog (GTK_WINDOW (xa_main_window),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_OK,_("You missed where to extract the files!"),_("Please fill the \"Extract to\" field!"));
++			goto run;
++		}
++	}
++	gtk_widget_hide(dialog->multi_extract);
++
++	overwrite = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialog->overwrite));
++	double fraction = 1.0 / dialog->nr;
++	pb = xa_create_progress_bar(FALSE,NULL);
++	do
++	{
++		gtk_tree_model_get (GTK_TREE_MODEL(dialog->files_liststore),&iter,0,&file,2,&path,3,&type,-1);
++		full_path = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialog->full_path));
++		filename = g_strconcat (path,"/",file,NULL);
++		xa_increase_progress_bar(pb,filename,percent);
++		g_free(file);
++		g_free(path);
++		message = xa_multi_extract_archive(dialog,filename,overwrite,full_path,dest_path);
++		if (message != NULL)
++		{
++			name = g_strconcat(filename,": ",message,"\n",NULL);
++			g_string_append(output,name);
++		}
++		g_free(filename);
++		if (dialog->stop_pressed)
++			break;
++		percent += fraction;
++	}
++	while (gtk_tree_model_iter_next (GTK_TREE_MODEL(dialog->files_liststore),&iter));
++
++	if (strlen(output->str)> 0)
++		xa_show_message_dialog (GTK_WINDOW (xa_main_window),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_OK,_("Some errors occurred:"),output->str );
++
++	g_string_free(output,TRUE);
++	if (dest_path != NULL)
++		g_free(dest_path);
++
++	gtk_list_store_clear(dialog->files_liststore);
++}
++
++static gchar *xa_multi_extract_archive(Multi_extract_data *dialog,gchar *filename,gboolean overwrite,gboolean full_path,gchar *dest_path)
++{
++	XArchive *archive = NULL;
++	gchar *dirname = NULL;
++	gchar *new_path = NULL;
++	gchar *_filename = NULL;
++	gint type;
++
++	if (dest_path == NULL)
++	{
++		_filename = strstr(filename,".");
++		if (_filename)
++			_filename = g_strndup(filename,(_filename-filename));
++		else
++			_filename = filename;
++		dest_path	= xa_remove_level_from_path(_filename);
++		dirname		= xa_remove_path_from_archive_name(_filename);
++		new_path	= g_strconcat(dest_path,"/",dirname,NULL);
++		g_free(dirname);
++		g_free(dest_path);
++		if (g_mkdir(new_path,0700)< 0)
++		{
++			g_free(new_path);
++			return strerror(errno);
++		}
++		dest_path = new_path;
++	}
++	type = xa_detect_archive_type(filename);
++	archive = xa_init_archive_structure(type);
++	dialog->archive = archive;
++	archive->overwrite = overwrite;
++	archive->full_path = full_path;
++	archive->escaped_path = xa_escape_bad_chars (filename,"$\'`\"\\!?* ()&|@#:;");
++	archive->extraction_path = g_strdup(dest_path);
++	if (g_str_has_suffix (archive->escaped_path,".tar.gz")|| g_str_has_suffix (archive->escaped_path,".tgz"))
++	{
++		archive->type = XARCHIVETYPE_TAR_GZ;
++		archive->extract = 	extract[XARCHIVETYPE_TAR_GZ];
++	}
++	else if (g_str_has_suffix(archive->escaped_path,".tar.bz2")|| g_str_has_suffix (archive->escaped_path,".tar.bz")
++    	|| g_str_has_suffix ( archive->escaped_path,".tbz")|| g_str_has_suffix (archive->escaped_path,".tbz2"))
++	{
++		archive->type = XARCHIVETYPE_TAR_BZ2;
++		archive->extract = 	extract[XARCHIVETYPE_TAR_BZ2];
++	}
++	else if (g_str_has_suffix(archive->escaped_path,".tar.lzma")|| g_str_has_suffix (archive->escaped_path,".tlz"))
++	{
++		archive->type = XARCHIVETYPE_TAR_LZMA;
++		archive->extract = 	extract[XARCHIVETYPE_TAR_LZMA];
++	}
++	else if (g_str_has_suffix(archive->escaped_path,".tar.lzop") ||
++			g_str_has_suffix (archive->escaped_path,".tzo") ||
++			g_str_has_suffix(archive->escaped_path,".tar.lzo"))
++	{
++		archive->type = XARCHIVETYPE_TAR_LZOP;
++		archive->extract = 	extract[XARCHIVETYPE_TAR_LZOP];
++	}
++	(*archive->extract)(archive,NULL);
++	xa_clean_archive_structure(archive);
++	return NULL;
++}
+--- xarchiver-0.5.2+20130119+dfsg-3-sid.orig/src/main.c
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/main.c
+@@ -311,9 +311,10 @@ void xa_set_available_archivers()
+ 	open_archive[XARCHIVETYPE_BZIP2]  = &xa_open_bzip2_lzma;
+ 	open_archive[XARCHIVETYPE_GZIP]  = &xa_open_gzip;
+ 	open_archive[XARCHIVETYPE_LZMA]  = &xa_open_bzip2_lzma;
++	open_archive[XARCHIVETYPE_XZ]  = &xa_open_bzip2_lzma;
+ 	open_archive[XARCHIVETYPE_RAR]  = &xa_open_rar;
+ 	open_archive[XARCHIVETYPE_RPM]  = &xa_open_rpm;
+-	open_archive[XARCHIVETYPE_TAR]  = open_archive[XARCHIVETYPE_TAR_BZ2] = open_archive[XARCHIVETYPE_TAR_GZ] = open_archive[XARCHIVETYPE_TAR_LZMA] = open_archive[XARCHIVETYPE_TAR_LZOP] = &xa_open_tar;
++	open_archive[XARCHIVETYPE_TAR]  = open_archive[XARCHIVETYPE_TAR_BZ2] = open_archive[XARCHIVETYPE_TAR_GZ] = open_archive[XARCHIVETYPE_TAR_LZMA] = open_archive[XARCHIVETYPE_TAR_XZ] = open_archive[XARCHIVETYPE_TAR_LZOP] = &xa_open_tar;
+ 	open_archive[XARCHIVETYPE_ZIP] = &xa_open_zip;
+ 	open_archive[XARCHIVETYPE_LHA] = &xa_open_lha;
+ 	open_archive[XARCHIVETYPE_LZOP] = &xa_open_bzip2_lzma;
+@@ -325,6 +326,7 @@ void xa_set_available_archivers()
+ 	delete[XARCHIVETYPE_BZIP2]  = 0;
+ 	delete[XARCHIVETYPE_GZIP]  = 0;
+ 	delete[XARCHIVETYPE_LZMA]  = 0;
++	delete[XARCHIVETYPE_XZ]  = 0;
+ 	delete[XARCHIVETYPE_RAR]  = &xa_rar_delete;
+ 	delete[XARCHIVETYPE_RPM]  = 0;
+ 	delete[XARCHIVETYPE_TAR]  = delete[XARCHIVETYPE_TAR_BZ2] = delete[XARCHIVETYPE_TAR_GZ] = delete[XARCHIVETYPE_TAR_LZMA] = delete[XARCHIVETYPE_TAR_LZOP] = &xa_tar_delete;
+@@ -340,7 +342,7 @@ void xa_set_available_archivers()
+ 	add[XARCHIVETYPE_BZIP2]  = add[XARCHIVETYPE_GZIP] = add[XARCHIVETYPE_LZMA] = &xa_tar_add;
+ 	add[XARCHIVETYPE_RAR]  = &xa_rar_add;
+ 	add[XARCHIVETYPE_RPM]  = 0;
+-	add[XARCHIVETYPE_TAR]  = add[XARCHIVETYPE_TAR_BZ2] = add[XARCHIVETYPE_TAR_GZ] = add[XARCHIVETYPE_TAR_LZMA] = add[XARCHIVETYPE_TAR_LZOP] = &xa_tar_add;
++	add[XARCHIVETYPE_TAR]  = add[XARCHIVETYPE_TAR_BZ2] = add[XARCHIVETYPE_TAR_GZ] = add[XARCHIVETYPE_TAR_LZMA] = add[XARCHIVETYPE_TAR_XZ] = add[XARCHIVETYPE_TAR_LZOP] = &xa_tar_add;
+ 	add[XARCHIVETYPE_ZIP] = &xa_zip_add;
+ 	add[XARCHIVETYPE_LHA] = &xa_lha_add;
+ 	add[XARCHIVETYPE_LZOP] = &xa_tar_add;
+@@ -352,7 +354,7 @@ void xa_set_available_archivers()
+ 	extract[XARCHIVETYPE_BZIP2]  = extract[XARCHIVETYPE_GZIP] = extract[XARCHIVETYPE_LZMA] = &xa_tar_extract;
+ 	extract[XARCHIVETYPE_RAR]  = &xa_rar_extract;
+ 	extract[XARCHIVETYPE_RPM]  = &xa_rpm_extract;
+-	extract[XARCHIVETYPE_TAR]  = extract[XARCHIVETYPE_TAR_BZ2] = extract[XARCHIVETYPE_TAR_GZ] = extract[XARCHIVETYPE_TAR_LZMA] = extract[XARCHIVETYPE_TAR_LZOP] = &xa_tar_extract;
++	extract[XARCHIVETYPE_TAR]  = extract[XARCHIVETYPE_TAR_BZ2] = extract[XARCHIVETYPE_TAR_GZ] = extract[XARCHIVETYPE_TAR_LZMA] = extract[XARCHIVETYPE_TAR_XZ] = extract[XARCHIVETYPE_TAR_LZOP] = &xa_tar_extract;
+ 	extract[XARCHIVETYPE_ZIP] = &xa_zip_extract;
+ 	extract[XARCHIVETYPE_LHA] = &xa_lha_extract;
+ 	extract[XARCHIVETYPE_LZOP] = &xa_tar_extract;
+@@ -363,7 +365,7 @@ void xa_set_available_archivers()
+ 	test[XARCHIVETYPE_DEB]  = test[XARCHIVETYPE_BZIP2] = test[XARCHIVETYPE_GZIP] = test[XARCHIVETYPE_LZMA] = 0;
+ 	test[XARCHIVETYPE_RAR]  = &xa_rar_test;
+ 	test[XARCHIVETYPE_RPM]  = 0;
+-	test[XARCHIVETYPE_TAR]  = test[XARCHIVETYPE_TAR_BZ2] = test[XARCHIVETYPE_TAR_GZ] = test[XARCHIVETYPE_TAR_LZMA] = test[XARCHIVETYPE_TAR_LZOP] = 0;
++	test[XARCHIVETYPE_TAR]  = test[XARCHIVETYPE_TAR_BZ2] = test[XARCHIVETYPE_TAR_GZ] = test[XARCHIVETYPE_TAR_LZMA] = test[XARCHIVETYPE_TAR_XZ] = test[XARCHIVETYPE_TAR_LZOP] = 0;
+ 	test[XARCHIVETYPE_ZIP] = &xa_zip_test;
+ 	test[XARCHIVETYPE_LHA] = &xa_lha_test;
+ 	test[XARCHIVETYPE_LZOP] = 0;
+@@ -407,6 +409,14 @@ void xa_set_available_archivers()
+ 		g_free (absolute_path);
+ 	}
+ 
++	absolute_path = g_find_program_in_path("xz");
++	if ( absolute_path )
++	{
++		ArchiveType = g_list_append(ArchiveType, "xz");
++		ArchiveSuffix = g_list_append(ArchiveSuffix, "*.xz");
++		g_free (absolute_path);
++	}
++
+ 	absolute_path = g_find_program_in_path("lzop");
+ 	if ( absolute_path )
+ 	{
+@@ -475,6 +485,11 @@ void xa_set_available_archivers()
+ 			ArchiveType = g_list_append(ArchiveType, "tar.lzma");
+ 			ArchiveSuffix = g_list_append(ArchiveSuffix, "*.tlz");
+ 		}
++		if ( g_list_find ( ArchiveType , "xz") )
++		{
++			ArchiveType = g_list_append(ArchiveType, "tar.xz");
++			ArchiveSuffix = g_list_append(ArchiveSuffix, "*.txz");
++		}
+ 		if ( g_list_find ( ArchiveType , "lzo") )
+ 		{
+ 			ArchiveType = g_list_append(ArchiveType, "tar.lzo");
+@@ -543,6 +558,8 @@ XArchive *xa_init_structure_from_cmd_lin
+ 		archive->type = XARCHIVETYPE_TAR_GZ;
+ 	else if ( g_str_has_suffix ( archive->escaped_path , ".tar.lzma") || g_str_has_suffix ( archive->escaped_path , ".tlz") )
+ 		archive->type = XARCHIVETYPE_TAR_LZMA;
++	else if ( g_str_has_suffix ( archive->escaped_path , ".tar.xz") || g_str_has_suffix ( archive->escaped_path , ".txz") )
++		archive->type = XARCHIVETYPE_TAR_XZ;
+ 	else if ( g_str_has_suffix ( archive->escaped_path , ".tar.lzo") ||
+ 		g_str_has_suffix ( archive->escaped_path , ".tzo") ||
+ 		g_str_has_suffix ( archive->escaped_path , ".tar.lzop"))
+--- xarchiver-0.5.2+20130119+dfsg-3-sid.orig/src/new_dialog.c
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/new_dialog.c
+@@ -214,6 +214,8 @@ XArchive *xa_new_archive_dialog (gchar *
+ 			type = XARCHIVETYPE_GZIP;
+ 		else if (strcmp ( ComboArchiveType,"lzma") == 0)
+ 			type = XARCHIVETYPE_LZMA;
++		else if (strcmp ( ComboArchiveType,"xz") == 0)
++			type = XARCHIVETYPE_XZ;
+ 		else if (strcmp ( ComboArchiveType,"lzo") == 0)
+ 			type = XARCHIVETYPE_LZOP;
+ 		else if (strcmp ( ComboArchiveType,"rar") == 0)
+@@ -226,6 +228,8 @@ XArchive *xa_new_archive_dialog (gchar *
+ 			type = XARCHIVETYPE_TAR_GZ;
+ 		else if (strcmp ( ComboArchiveType,"tar.lzma") == 0)
+ 			type = XARCHIVETYPE_TAR_LZMA;
++		else if (strcmp ( ComboArchiveType,"tar.xz") == 0)
++			type = XARCHIVETYPE_TAR_XZ;
+ 		else if (strcmp ( ComboArchiveType,"tar.lzo") == 0)
+ 			type = XARCHIVETYPE_TAR_LZOP;
+ 		else if (strcmp ( ComboArchiveType,"jar") == 0 || strcmp ( ComboArchiveType,"zip") == 0 )
+--- /dev/null
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/new_dialog.c.orig
+@@ -0,0 +1,252 @@
++/*
++ *  Copyright (C) 2008 Giuseppe Torelli - <colossus73@gmail.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, write to the Free Software
++ *  Foundation, Inc., 59 Temple Street #330, Boston, MA 02111-1307, USA.
++ */
++
++#include "config.h"
++#include <glib.h>
++#include <gtk/gtk.h>
++#include "new_dialog.h"
++#include "window.h"
++#include "string_utils.h"
++#include "main.h"
++
++extern gboolean unrar;
++extern Prefs_dialog_data *prefs_window;
++gchar *current_new_directory = NULL;
++gint  new_combo_box = -1;
++gchar *ComboArchiveType;
++
++void xa_change_archive_extension (GtkComboBox *combo_box, GtkWidget *xa_file_chooser) {
++	GList *Name;
++	gchar *path;
++	
++	Name = g_list_last(ArchiveType);
++	path = g_path_get_basename ( gtk_file_chooser_get_filename ( GTK_FILE_CHOOSER (xa_file_chooser) ));
++	
++	while (Name)
++	{
++		if (g_str_has_suffix(path, Name->data)) {
++			ComboArchiveType = gtk_combo_box_get_active_text (combo_box);
++			/* Replaces the valid extension present in the filename with the one just selected */
++			gtk_file_chooser_set_current_name (GTK_FILE_CHOOSER (xa_file_chooser), g_strconcat(g_strndup(path, strlen(path) - strlen(Name->data)), ComboArchiveType, NULL));
++			return;
++		}
++		Name = g_list_previous (Name);
++	}
++	
++	/* Appends the extension without taking anything out */
++	gtk_file_chooser_set_current_name (GTK_FILE_CHOOSER (xa_file_chooser), g_strconcat(path, ComboArchiveType, NULL));
++}
++
++XArchive *xa_new_archive_dialog (gchar *path, XArchive *archive_open[], gboolean flag)
++{
++	XArchive *archive = NULL;
++	GtkWidget *xa_file_chooser;
++	GtkWidget *hbox = NULL;
++	GtkWidget *combo_box = NULL;
++	GtkFileFilter *xa_new_archive_dialog_filter;
++	GtkTooltips *filter_tooltip;
++	GList *Suffix,*Name;
++	gchar *my_path = NULL;
++	gchar *my_path_ext = NULL;
++	gchar *basepath = NULL;
++	gchar *current_dir = NULL;
++	gint current_page, response,type = 0;
++	unsigned short int x;
++
++	xa_file_chooser = gtk_file_chooser_dialog_new ( _("Create a new archive"),
++							GTK_WINDOW (xa_main_window),
++							GTK_FILE_CHOOSER_ACTION_SAVE,
++							GTK_STOCK_CANCEL,
++							GTK_RESPONSE_CANCEL,
++							_("Cr_eate"),
++							GTK_RESPONSE_ACCEPT,
++							NULL);
++
++	gtk_dialog_set_default_response (GTK_DIALOG (xa_file_chooser), GTK_RESPONSE_ACCEPT);
++
++	xa_new_archive_dialog_filter = gtk_file_filter_new ();
++	gtk_file_filter_set_name ( xa_new_archive_dialog_filter , _("All files") );
++	gtk_file_filter_add_pattern ( xa_new_archive_dialog_filter, "*" );
++	gtk_file_chooser_add_filter (GTK_FILE_CHOOSER (xa_file_chooser), xa_new_archive_dialog_filter);
++
++	xa_new_archive_dialog_filter = gtk_file_filter_new ();
++	gtk_file_filter_set_name ( xa_new_archive_dialog_filter , _("Only archives") );
++
++	Suffix = g_list_first ( ArchiveSuffix );
++
++	while ( Suffix != NULL )
++	{
++		gtk_file_filter_add_pattern (xa_new_archive_dialog_filter, Suffix->data);
++		Suffix = g_list_next ( Suffix );
++	}
++	gtk_file_chooser_add_filter (GTK_FILE_CHOOSER (xa_file_chooser), xa_new_archive_dialog_filter);
++
++	Suffix = g_list_first ( ArchiveSuffix );
++
++	while ( Suffix != NULL )
++	{
++		if ( strcmp(Suffix->data, "") != 0 )	/* To avoid double filtering when opening the archive */
++		{
++			xa_new_archive_dialog_filter = gtk_file_filter_new ();
++			gtk_file_filter_set_name (xa_new_archive_dialog_filter, Suffix->data );
++			gtk_file_filter_add_pattern (xa_new_archive_dialog_filter, Suffix->data );
++			gtk_file_chooser_add_filter (GTK_FILE_CHOOSER (xa_file_chooser), xa_new_archive_dialog_filter);
++		}
++		Suffix = g_list_next ( Suffix );
++	}
++	hbox = gtk_hbox_new (FALSE, 6);
++	gtk_box_pack_start (GTK_BOX (hbox),gtk_label_new (_("Archive type:")),FALSE,FALSE,0);
++
++	combo_box = gtk_combo_box_new_text ();
++
++	filter_tooltip = gtk_tooltips_new();
++	gtk_tooltips_set_tip (filter_tooltip,combo_box, _("Choose the archive type to create") , NULL);
++	Name = g_list_first (ArchiveType);
++
++	while (Name)
++	{
++		gtk_combo_box_append_text(GTK_COMBO_BOX(combo_box),Name->data);
++		Name = g_list_next (Name);
++	}
++	if (new_combo_box == -1)
++		gtk_combo_box_set_active(GTK_COMBO_BOX(combo_box),gtk_combo_box_get_active(GTK_COMBO_BOX(prefs_window->combo_prefered_format)));
++	else
++		gtk_combo_box_set_active (GTK_COMBO_BOX (combo_box),new_combo_box);
++
++	gtk_box_pack_start (GTK_BOX (hbox), combo_box, TRUE, TRUE, 0);
++
++	gtk_widget_show_all (hbox);
++	gtk_file_chooser_set_extra_widget (GTK_FILE_CHOOSER (xa_file_chooser), hbox);
++	ComboArchiveType = gtk_combo_box_get_active_text (GTK_COMBO_BOX (combo_box));
++	g_signal_connect(G_OBJECT(combo_box), "changed", G_CALLBACK(xa_change_archive_extension), xa_file_chooser);
++	
++	if (path != NULL)
++	{
++		basepath = g_path_get_basename (path);
++		gtk_file_chooser_set_current_name (GTK_FILE_CHOOSER (xa_file_chooser), g_strconcat(basepath, ".", ComboArchiveType, NULL));
++
++		current_dir = g_get_current_dir ();
++		gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (xa_file_chooser),current_dir);
++
++		g_free (basepath);
++		g_free (current_dir);
++	} else {
++		gtk_file_chooser_set_current_name (GTK_FILE_CHOOSER (xa_file_chooser), g_strconcat(".", ComboArchiveType, NULL));
++	}
++	
++	gtk_window_set_modal (GTK_WINDOW (xa_file_chooser),TRUE);
++	if (current_new_directory != NULL)
++		gtk_file_chooser_set_current_folder ( GTK_FILE_CHOOSER (xa_file_chooser),current_new_directory);
++	response = gtk_dialog_run (GTK_DIALOG (xa_file_chooser));
++	current_new_directory = gtk_file_chooser_get_current_folder (GTK_FILE_CHOOSER (xa_file_chooser));
++
++	if (response == GTK_RESPONSE_ACCEPT)
++	{
++		my_path = gtk_file_chooser_get_filename ( GTK_FILE_CHOOSER (xa_file_chooser) );
++
++		if (xa_main_window)
++		{
++			for (x = 0; x < gtk_notebook_get_n_pages (notebook) ; x++)
++			{
++				current_page = xa_find_archive_index (x);
++				if (current_page == -1)
++					break;
++				if (strcmp (my_path,archive_open[current_page]->path) == 0)
++				{
++					gchar *msg = g_strdup_printf(_("\"%s\" is already open!"),my_path);
++					response = xa_show_message_dialog (GTK_WINDOW (xa_main_window),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_OK,_("Can't create a new archive:"),msg );
++					g_free (my_path);
++					g_free (msg);
++					gtk_widget_destroy (xa_file_chooser);
++					return NULL;
++				}
++			}
++		}
++
++		if ( g_file_test ( my_path , G_FILE_TEST_EXISTS ) )
++		{
++			gchar *utf8_path;
++			gchar  *msg;
++
++			utf8_path = g_filename_to_utf8 (my_path, -1, NULL, NULL, NULL);
++			msg = g_strdup_printf (_("The archive \"%s\" already exists!"), utf8_path);
++			response = xa_show_message_dialog (GTK_WINDOW (xa_main_window),
++							GTK_DIALOG_MODAL,
++							GTK_MESSAGE_QUESTION,
++							GTK_BUTTONS_OK_CANCEL,
++							msg,
++							_("Do you want to overwrite it?")
++							);
++			g_free (utf8_path);
++			g_free (msg);
++			if (response != GTK_RESPONSE_OK)
++			{
++				g_free (my_path);
++				gtk_widget_destroy (xa_file_chooser);
++			    return NULL;
++			}
++			/* The following to avoid to update the archive instead of adding to it since the filename exists */
++			unlink (my_path);
++		}
++
++		new_combo_box = gtk_combo_box_get_active (GTK_COMBO_BOX (combo_box));
++
++		if (strcmp ( ComboArchiveType,"arj") == 0)
++			type = XARCHIVETYPE_ARJ;
++		else if (strcmp ( ComboArchiveType,"bz2") == 0)
++			type = XARCHIVETYPE_BZIP2;
++		else if (strcmp ( ComboArchiveType,"gz") == 0)
++			type = XARCHIVETYPE_GZIP;
++		else if (strcmp ( ComboArchiveType,"lzma") == 0)
++			type = XARCHIVETYPE_LZMA;
++		else if (strcmp ( ComboArchiveType,"lzo") == 0)
++			type = XARCHIVETYPE_LZOP;
++		else if (strcmp ( ComboArchiveType,"rar") == 0)
++			type = XARCHIVETYPE_RAR;
++		else if (strcmp ( ComboArchiveType,"tar") == 0)
++			type = XARCHIVETYPE_TAR;
++		else if (strcmp ( ComboArchiveType,"tar.bz2") == 0)
++			type = XARCHIVETYPE_TAR_BZ2;
++		else if (strcmp ( ComboArchiveType,"tar.gz") == 0)
++			type = XARCHIVETYPE_TAR_GZ;
++		else if (strcmp ( ComboArchiveType,"tar.lzma") == 0)
++			type = XARCHIVETYPE_TAR_LZMA;
++		else if (strcmp ( ComboArchiveType,"tar.lzo") == 0)
++			type = XARCHIVETYPE_TAR_LZOP;
++		else if (strcmp ( ComboArchiveType,"jar") == 0 || strcmp ( ComboArchiveType,"zip") == 0 )
++			type = XARCHIVETYPE_ZIP;
++		else if (strcmp ( ComboArchiveType,"rpm") == 0)
++			type = XARCHIVETYPE_RPM;
++		else if (strcmp ( ComboArchiveType,"7z") == 0)
++			type = XARCHIVETYPE_7ZIP;
++		else if (strcmp ( ComboArchiveType,"lzh") == 0)
++			type = XARCHIVETYPE_LHA;
++
++		archive = xa_init_archive_structure (type);
++		archive->type = type;
++		gtk_widget_destroy (xa_file_chooser);
++		archive->path = g_strdup (my_path);
++		archive->escaped_path = xa_escape_bad_chars (archive->path , "$\'`\"\\!?* ()&|@#:;");
++		g_free (my_path);
++		return archive;
++	}
++	else if ( (response == GTK_RESPONSE_CANCEL) || (response == GTK_RESPONSE_DELETE_EVENT) )
++		gtk_widget_destroy (xa_file_chooser);
++
++	return NULL;
++}
+--- xarchiver-0.5.2+20130119+dfsg-3-sid.orig/src/tar.c
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/tar.c
+@@ -244,6 +244,17 @@ void xa_tar_add (XArchive *archive,GStri
+ 									files->str , NULL );
+ 		break;
+ 		
++		case XARCHIVETYPE_TAR_XZ:
++		if ( g_file_test ( archive->escaped_path , G_FILE_TEST_EXISTS ) )
++			xa_add_delete_bzip2_gzip_lzma_compressed_tar (files,archive,1);
++		else
++			command = g_strconcat (tar, " ",
++									archive->add_recurse ? "" : "--no-recursion ",
++									archive->remove_files ? "--remove-files " : "",
++									"--use-compress-program=xz -cvvf ",archive->escaped_path,
++									files->str , NULL );
++		break;
++		
+ 		case XARCHIVETYPE_TAR_LZOP:
+ 		if ( g_file_test ( archive->escaped_path , G_FILE_TEST_EXISTS ) )
+ 			xa_add_delete_bzip2_gzip_lzma_compressed_tar (files,archive,1);
+@@ -380,6 +391,25 @@ gboolean xa_tar_extract(XArchive *archiv
+ 		}
+ 		break;
+ 
++		case XARCHIVETYPE_TAR_XZ:
++		if (archive->full_path == 1)
++		{
++			command = g_strconcat (tar, " --use-compress-program=xz -xvf " , archive->escaped_path,
++						#ifdef __FreeBSD__
++								archive->overwrite ? " " : " -k",
++						#else
++								archive->overwrite ? " --overwrite" : " --keep-old-files",
++						#endif
++								archive->tar_touch ? " --touch" : "",
++								" -C ",archive->extraction_path," ",names->str,NULL);
++		}
++		else
++		{
++			result = xa_extract_tar_without_directories ( "tar --use-compress-program=xz -xvf ",archive,names->str);
++			command = NULL;
++		}
++		break;
++
+ 		case XARCHIVETYPE_TAR_LZOP:
+ 		if (archive->full_path == 1)
+ 		{
+@@ -404,6 +434,11 @@ gboolean xa_tar_extract(XArchive *archiv
+ 		command = NULL;
+ 		break;
+ 
++		case XARCHIVETYPE_XZ:
++		result = lzma_bzip2_extract(archive,NULL);
++		command = NULL;
++		break;
++
+ 		case XARCHIVETYPE_LZOP:
+ 		result = lzma_bzip2_extract(archive,NULL);
+ 		command = NULL;
+@@ -451,6 +486,10 @@ void xa_add_delete_bzip2_gzip_lzma_compr
+ 			executable = "lzma -f ";
+ 			filename = "dummy.lzma";
+ 		break;
++		case XARCHIVETYPE_TAR_XZ:
++			executable = "xz -f ";
++			filename = "dummy.xz";
++		break;
+ 		case XARCHIVETYPE_TAR_LZOP:
+ 			executable = "lzop -f ";
+ 			filename = "dummy.lzo";
+--- /dev/null
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/tar.c.orig
+@@ -0,0 +1,578 @@
++/*
++ *  Copyright (C) 2008 Giuseppe Torelli - <colossus73@gmail.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, write to the Free Software
++ *  Foundation, Inc., 59 Temple Street #330, Boston, MA 02111-1307, USA.
++ */
++
++#include "config.h"
++#include <string.h>
++#include "tar.h"
++
++extern void xa_reload_archive_content(XArchive *archive);
++extern void xa_create_liststore ( XArchive *archive, gchar *columns_names[]);
++extern gchar *tar;
++
++static gboolean xa_concat_filenames (GtkTreeModel *model,GtkTreePath *path,GtkTreeIter *iter,GSList **list);
++
++void xa_open_tar (XArchive *archive)
++{
++	gchar *command;
++	unsigned short int i;
++
++	command = g_strconcat (tar, " tfv " , archive->escaped_path, NULL);
++	archive->has_properties = archive->can_add = archive->can_extract = TRUE;
++	archive->has_test = archive->has_sfx = FALSE;
++	archive->dummy_size = 0;
++	archive->nr_of_files = 0;
++	archive->nc = 7;
++	archive->parse_output = xa_get_tar_line_content;
++	archive->format ="TAR";
++	xa_spawn_async_process (archive,command);
++
++	g_free (command);
++
++	if (archive->child_pid == 0)
++		return;
++
++	GType types[]= {GDK_TYPE_PIXBUF,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_UINT64,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_POINTER};
++	archive->column_types = g_malloc0(sizeof(types));
++	for (i = 0; i < 9; i++)
++		archive->column_types[i] = types[i];
++
++	char *names[]= {(_("Points to")),(_("Permissions")),(_("Owner/Group")),(_("Size")),(_("Date")),(_("Time")),NULL};
++	xa_create_liststore (archive,names);
++}
++
++void xa_get_tar_line_content (gchar *line, gpointer data)
++{
++	XArchive *archive = data;
++	XEntry *entry;
++	gchar *filename;
++	gpointer item[6];
++	gint n = 0, a = 0 ,linesize = 0;
++	gboolean dir = FALSE;
++
++	linesize = strlen(line);
++	archive->nr_of_files++;
++
++	/* Permissions */
++	line[10] = '\0';
++	item[1] = line;
++	
++	/* Owner */
++	for(n=13; n < linesize; ++n)
++		if(line[n] == ' ')
++			break;
++	line[n] = '\0';
++	item[2] = line+11;
++
++	/* Size */	
++	for(++n; n < linesize; ++n)
++		if(line[n] >= '0' && line[n] <= '9')
++			break;
++	a = n;
++
++	for(; n < linesize; ++n)
++		if(line[n] == ' ')
++			break;
++
++	line[n] = '\0';
++	item[3] = line + a;
++	archive->dummy_size += g_ascii_strtoull(item[3],NULL,0);
++	a = ++n;
++
++	/* Date */	
++	for(; n < linesize; n++)
++		if(line[n] == ' ')
++			break;
++
++	line[n] = '\0';
++	item[4] = line + a;
++
++	/* Time */
++	a = ++n;
++	for (; n < linesize; n++)
++		if (line[n] == ' ')
++			break;
++
++	line[n] = '\0';
++	item[5] = line + a;
++	n++;
++	line[linesize-1] = '\0';
++
++	filename = line + n;
++	
++	/* Symbolic link */
++	gchar *temp = g_strrstr (filename,"->"); 
++	if (temp) 
++	{
++		gint len = strlen(filename) - strlen(temp);
++		item[0] = (filename +=3) + len;
++		filename[strlen(filename) - strlen(temp)-1] = '\0';
++	}
++	else
++		item[0] = NULL;
++
++	if(line[0] == 'd')
++	{
++		dir = TRUE;
++		/* Work around for gtar, which does not output / with directories */
++		if(line[linesize-2] != '/')
++			filename = g_strconcat(line + n, "/", NULL); 
++		else
++			filename = g_strdup(line + n); 
++	}
++	else
++		filename = g_strdup(line + n);
++	entry = xa_set_archive_entries_for_each_row (archive,filename,item);
++	g_free(filename);
++}
++
++gboolean isTar (FILE *ptr)
++{
++	unsigned char magic[7];
++	fseek ( ptr, 0 , SEEK_SET );
++    if ( fseek ( ptr , 257 , SEEK_CUR) < 0 )
++		return FALSE;
++    if ( fread ( magic, 1, 7, ptr ) == 0 )
++		return FALSE;
++    if ( memcmp ( magic,"\x75\x73\x74\x61\x72\x00\x30",7 ) == 0 ||
++	 memcmp ( magic,"\x75\x73\x74\x61\x72\x20\x20",7 ) == 0 ||
++ 	 memcmp ( magic,"\x0\x0\x0\x0\x0\x0\x0",7) == 0)
++		return TRUE;
++    else
++		return FALSE;
++}
++
++void xa_tar_delete (XArchive *archive,GSList *files)
++{
++	gchar *e_filename,*command = NULL;
++	GSList *_files,*list = NULL;
++	GString *names = g_string_new("");
++
++	_files = files;
++	while (_files)
++	{
++		e_filename  = xa_escape_filename((gchar*)_files->data,"$'`\"\\!?* ()[]&|:;<>#");
++		g_string_prepend (names,e_filename);
++		g_string_prepend_c (names,' ');
++		_files = _files->next;
++	}
++	g_slist_foreach(files,(GFunc)g_free,NULL);
++	g_slist_free(files);
++
++	if (is_tar_compressed(archive->type))
++		xa_add_delete_bzip2_gzip_lzma_compressed_tar(names,archive,0);
++	else
++	{
++		command = g_strconcat (tar, " --delete -vf ",archive->escaped_path," ",names->str,NULL);
++		list = g_slist_append(list,command);
++		xa_run_command (archive,list);
++		if (archive->status == XA_ARCHIVESTATUS_DELETE)
++			xa_reload_archive_content(archive);
++	}
++}
++
++void xa_tar_add (XArchive *archive,GString *files,gchar *compression_string)
++{
++	GSList *list = NULL;
++	gchar *command = NULL;
++
++	if (archive->location_entry_path != NULL)
++		archive->working_dir = g_strdup(archive->tmp);
++
++	switch (archive->type)
++	{
++		case XARCHIVETYPE_TAR:
++		if ( g_file_test (archive->escaped_path,G_FILE_TEST_EXISTS))
++			command = g_strconcat (tar, " ",
++									archive->add_recurse ? "" : "--no-recursion ",
++									archive->remove_files ? "--remove-files " : "",
++									archive->update ? "-uvvf " : "-rvvf ",
++									archive->escaped_path,
++									files->str , NULL );
++		else
++			command = g_strconcat (tar, " ",
++									archive->add_recurse ? "" : "--no-recursion ",
++									archive->remove_files ? "--remove-files " : "",
++									"-cvvf ",archive->escaped_path,
++									files->str , NULL );
++		break;
++
++		case XARCHIVETYPE_TAR_BZ2:
++		if ( g_file_test ( archive->escaped_path , G_FILE_TEST_EXISTS ) )
++			xa_add_delete_bzip2_gzip_lzma_compressed_tar (files,archive,1);
++		else
++			command = g_strconcat (tar, " ",
++									archive->add_recurse ? "" : "--no-recursion ",
++									archive->remove_files ? "--remove-files " : "",
++									"-cvvjf ",archive->escaped_path,
++									files->str , NULL );
++		break;
++
++		case XARCHIVETYPE_TAR_GZ:
++		if ( g_file_test ( archive->escaped_path , G_FILE_TEST_EXISTS ) )
++			xa_add_delete_bzip2_gzip_lzma_compressed_tar (files,archive,1);
++		else
++			command = g_strconcat (tar, " ",
++									archive->add_recurse ? "" : "--no-recursion ",
++									archive->remove_files ? "--remove-files " : "",
++									"-cvvzf ",archive->escaped_path,
++									files->str , NULL );
++		break;
++		
++		case XARCHIVETYPE_TAR_LZMA:
++		if ( g_file_test ( archive->escaped_path , G_FILE_TEST_EXISTS ) )
++			xa_add_delete_bzip2_gzip_lzma_compressed_tar (files,archive,1);
++		else
++			command = g_strconcat (tar, " ",
++									archive->add_recurse ? "" : "--no-recursion ",
++									archive->remove_files ? "--remove-files " : "",
++									"--use-compress-program=lzma -cvvf ",archive->escaped_path,
++									files->str , NULL );
++		break;
++		
++		case XARCHIVETYPE_TAR_XZ:
++		if ( g_file_test ( archive->escaped_path , G_FILE_TEST_EXISTS ) )
++			xa_add_delete_bzip2_gzip_lzma_compressed_tar (files,archive,1);
++		else
++			command = g_strconcat (tar, " ",
++									archive->add_recurse ? "" : "--no-recursion ",
++									archive->remove_files ? "--remove-files " : "",
++									"--use-compress-program=xz -cvvf ",archive->escaped_path,
++									files->str , NULL );
++		break;
++		
++		case XARCHIVETYPE_TAR_LZOP:
++		if ( g_file_test ( archive->escaped_path , G_FILE_TEST_EXISTS ) )
++			xa_add_delete_bzip2_gzip_lzma_compressed_tar (files,archive,1);
++		else
++			command = g_strconcat (tar, " ",
++									archive->add_recurse ? "" : "--no-recursion ",
++									archive->remove_files ? "--remove-files " : "",
++									"--use-compress-program=lzop -cvvf ",archive->escaped_path,
++									files->str , NULL );
++		break;
++
++		case XARCHIVETYPE_BZIP2:
++			command = g_strconcat("sh -c \"bzip2 -c ",files->str,"> ",archive->escaped_path,"\"",NULL);
++		break;
++
++		case XARCHIVETYPE_GZIP:
++			command = g_strconcat("sh -c \"gzip -c ",files->str,"> ",archive->escaped_path,"\"",NULL);
++		break;
++
++		case XARCHIVETYPE_LZMA:
++			command = g_strconcat("sh -c \"lzma -c ",files->str,"> ",archive->escaped_path,"\"",NULL);
++		break;
++
++		case XARCHIVETYPE_LZOP:
++			command = g_strconcat("sh -c \"lzop -c ",files->str,"> ",archive->escaped_path,"\"",NULL);
++		break;
++
++		default:
++		command = NULL;
++	}
++
++	if (command != NULL)
++	{
++		g_string_free(files,TRUE);
++		list = g_slist_append(list,command);
++		xa_run_command (archive,list);
++		xa_reload_archive_content(archive);
++	}
++}
++
++gboolean xa_tar_extract(XArchive *archive,GSList *files)
++{
++	gchar *command,*e_filename = NULL;
++	GSList *list = NULL,*_files = NULL;
++	GString *names = g_string_new("");
++	gboolean result = FALSE;
++
++	_files = files;
++	while (_files)
++	{
++		e_filename = xa_escape_filename((gchar*)_files->data,"$'`\"\\!?* ()[]&|:;<>#");
++		g_string_prepend_c (names,' ');
++		g_string_prepend (names,e_filename);
++		_files = _files->next;
++	}
++	g_slist_foreach(files,(GFunc)g_free,NULL);
++	g_slist_free(files);
++
++	switch (archive->type)
++	{
++		case XARCHIVETYPE_TAR:
++		if (archive->full_path)
++		{
++			command = g_strconcat (tar, " -xvf " , archive->escaped_path,
++						#ifdef __FreeBSD__
++								archive->overwrite ? " " : " -k",
++						#else
++								archive->overwrite ? " --overwrite" : " --keep-old-files",
++						#endif
++								archive->tar_touch ? " --touch" : "",
++								" -C ",archive->extraction_path," ",names->str,NULL);
++		}
++		else
++		{
++			result = xa_extract_tar_without_directories ( "tar -xvf ",archive,names->str);
++			command = NULL;
++		}
++		break;
++
++		case XARCHIVETYPE_TAR_BZ2:
++		if (archive->full_path)
++		{
++			command = g_strconcat (tar, " -xjvf " , archive->escaped_path,
++						#ifdef __FreeBSD__
++								archive->overwrite ? " " : " -k",
++						#else
++								archive->overwrite ? " --overwrite" : " --keep-old-files",
++						#endif
++								archive->tar_touch ? " --touch" : "",
++								" -C ",archive->extraction_path," ",names->str,NULL);
++		}
++		else
++		{
++			result = xa_extract_tar_without_directories ( "tar -xjvf ",archive,names->str);
++			command = NULL;
++		}
++		break;
++
++		case XARCHIVETYPE_TAR_GZ:
++		if (archive->full_path == 1)
++		{
++			command = g_strconcat (tar, " -xzvf " , archive->escaped_path,
++						#ifdef __FreeBSD__
++								archive->overwrite ? " " : " -k",
++						#else
++								archive->overwrite ? " --overwrite" : " --keep-old-files",
++						#endif
++								archive->tar_touch ? " --touch" : "",
++								" -C ",archive->extraction_path," ",names->str,NULL);
++		}
++		else
++		{
++			result = xa_extract_tar_without_directories ( "tar -xzvf ",archive,names->str);
++			command = NULL;
++		}
++		break;
++
++		case XARCHIVETYPE_TAR_LZMA:
++		if (archive->full_path == 1)
++		{
++			command = g_strconcat (tar, " --use-compress-program=lzma -xvf " , archive->escaped_path,
++						#ifdef __FreeBSD__
++								archive->overwrite ? " " : " -k",
++						#else
++								archive->overwrite ? " --overwrite" : " --keep-old-files",
++						#endif
++								archive->tar_touch ? " --touch" : "",
++								" -C ",archive->extraction_path," ",names->str,NULL);
++		}
++		else
++		{
++			result = xa_extract_tar_without_directories ( "tar --use-compress-program=lzma -xvf ",archive,names->str);
++			command = NULL;
++		}
++		break;
++
++		case XARCHIVETYPE_TAR_LZOP:
++		if (archive->full_path == 1)
++		{
++			command = g_strconcat (tar, " --use-compress-program=lzop -xvf " , archive->escaped_path,
++						#ifdef __FreeBSD__
++								archive->overwrite ? " " : " -k",
++						#else
++								archive->overwrite ? " --overwrite" : " --keep-old-files",
++						#endif
++								archive->tar_touch ? " --touch" : "",
++								" -C ",archive->extraction_path," ",names->str,NULL);
++		}
++		else
++		{
++			result = xa_extract_tar_without_directories ( "tar --use-compress-program=lzop -xvf ",archive,names->str);
++			command = NULL;
++		}
++		break;
++
++		case XARCHIVETYPE_LZMA:
++		result = lzma_bzip2_extract(archive,NULL);
++		command = NULL;
++		break;
++
++		case XARCHIVETYPE_LZOP:
++		result = lzma_bzip2_extract(archive,NULL);
++		command = NULL;
++		break;
++
++		case XARCHIVETYPE_BZIP2:
++		result = lzma_bzip2_extract(archive,NULL);
++		command = NULL;
++		break;
++
++		case XARCHIVETYPE_GZIP:
++		result = gzip_extract(archive,NULL);
++		command = NULL;
++		break;
++
++		default:
++		command = NULL;
++	}
++	if (command != NULL)
++	{
++		g_string_free(names,TRUE);
++		list = g_slist_append(list,command);
++		result = xa_run_command (archive,list);
++	}
++	return result;
++}
++
++void xa_add_delete_bzip2_gzip_lzma_compressed_tar (GString *files,XArchive *archive,gboolean add)
++{
++	gchar *command,*executable = NULL,*filename = NULL;
++	gboolean result;
++	GSList *list = NULL;
++	
++	switch (archive->type)
++	{
++		case XARCHIVETYPE_TAR_BZ2:
++			executable = "bzip2 -f ";
++			filename = "dummy.bz2";
++		break;
++		case XARCHIVETYPE_TAR_GZ:
++			executable = "gzip -f ";
++			filename = "dummy.gz";
++		break;
++		case XARCHIVETYPE_TAR_LZMA:
++			executable = "lzma -f ";
++			filename = "dummy.lzma";
++		break;
++		case XARCHIVETYPE_TAR_XZ:
++			executable = "xz -f ";
++			filename = "dummy.xz";
++		break;
++		case XARCHIVETYPE_TAR_LZOP:
++			executable = "lzop -f ";
++			filename = "dummy.lzo";
++		break;
++		
++		default:
++		break;
++	}
++	/* Let's copy the archive to /tmp first */
++	result = xa_create_temp_directory(archive);
++	if (!result)
++		return;
++
++	/* Let's copy the archive to /tmp first */
++	command = g_strconcat ("cp -a ",archive->escaped_path," ",archive->tmp,"/",filename,NULL);
++	list = g_slist_append(list,command);
++
++	command = g_strconcat (executable,"-d ",archive->tmp,"/",filename,NULL);
++	list = g_slist_append(list,command);
++
++	if (add)
++		command = g_strconcat (tar, " ",
++							archive->add_recurse ? "" : "--no-recursion ",
++							archive->remove_files ? "--remove-files " : "",
++							archive->update ? "-uvvf " : "-rvvf ",
++							archive->tmp,"/dummy",
++							files->str , NULL );
++	else
++		command = g_strconcat (tar," --no-wildcards --delete -f ",archive->tmp,"/dummy ",files->str,NULL);
++	list = g_slist_append(list,command);
++
++	command = g_strconcat (executable,archive->tmp,"/dummy",NULL);
++	list = g_slist_append(list,command);
++
++	/* Let's move the modified archive from /tmp to the original archive location */
++	command = g_strconcat ("mv ",archive->tmp,"/",filename," ",archive->escaped_path,NULL);
++	list = g_slist_append(list,command);
++	xa_run_command (archive,list);
++	if (archive->status == XA_ARCHIVESTATUS_DELETE || archive->status == XA_ARCHIVESTATUS_ADD)
++		xa_reload_archive_content(archive);
++}
++
++gboolean is_tar_compressed (gint type)
++{
++	return (type == XARCHIVETYPE_TAR_BZ2 || type == XARCHIVETYPE_TAR_GZ || type == XARCHIVETYPE_TAR_LZMA || type == XARCHIVETYPE_TAR_LZOP);
++}
++
++gboolean xa_extract_tar_without_directories (gchar *string,XArchive *archive,gchar *files_to_extract)
++{
++	gchar *command = NULL, *e_filename = NULL;
++	GSList *list = NULL;
++	GSList *files = NULL;
++	GString *names = g_string_new("");
++	gboolean result;
++
++	result = xa_create_temp_directory (archive);
++	if (!result)
++		return FALSE;
++
++	if (strlen(files_to_extract) == 0)
++	{
++		gtk_tree_model_foreach(GTK_TREE_MODEL(archive->liststore),(GtkTreeModelForeachFunc) xa_concat_filenames,&files);
++
++		while (files)
++		{
++			e_filename = xa_escape_filename((gchar*)files->data,"$'`\"\\!?* ()[]&|:;<>#");
++			g_string_prepend_c (names,' ');
++			g_string_prepend (names,e_filename);
++			files = files->next;
++		}
++		g_slist_foreach(files,(GFunc)g_free,NULL);
++		g_slist_free(files);
++		files_to_extract = names->str;
++	}
++	
++	command = g_strconcat (string, archive->escaped_path,
++										#ifdef __FreeBSD__
++											archive->overwrite ? " " : " -k",
++										#else
++											archive->overwrite ? " --overwrite" : " --keep-old-files",
++											" --no-wildcards ",
++										#endif
++										archive->tar_touch ? " --touch" : "",
++										"-C ",archive->tmp," ",files_to_extract,NULL);
++	list = g_slist_append(list,command);
++	if (strstr(files_to_extract,"/") || strcmp(archive->tmp,archive->extraction_path) != 0)
++	{
++		archive->working_dir = g_strdup(archive->tmp);
++		command = g_strconcat ("mv -f ",files_to_extract," ",archive->extraction_path,NULL);
++		list = g_slist_append(list,command);
++	}
++	g_string_free(names,TRUE);
++	return xa_run_command (archive,list);
++}
++
++static gboolean xa_concat_filenames (GtkTreeModel *model,GtkTreePath *path,GtkTreeIter *iter,GSList **list)
++{
++	XEntry *entry;
++	gint current_page,idx;
++
++	current_page = gtk_notebook_get_current_page(notebook);
++	idx = xa_find_archive_index (current_page);
++
++	gtk_tree_model_get(model,iter,archive[idx]->nc+1,&entry,-1);
++	if (entry == NULL)
++		return TRUE;
++	else
++		xa_fill_list_with_recursed_entries(entry->child,list);
++	return FALSE;
++}
+--- xarchiver-0.5.2+20130119+dfsg-3-sid.orig/src/window.c
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/window.c
+@@ -1126,6 +1126,8 @@ XArchiveType xa_detect_archive_type (gch
+ 		xx = XARCHIVETYPE_GZIP;
+ 	else if (memcmp ( magic,"\x5d\x00\x00\x80",4) == 0)
+ 		xx = XARCHIVETYPE_LZMA;
++	else if (memcmp ( magic,"\xFD7zXZ\x00\0x00",3) || memcmp ( magic, "\xFD7zXZ\x00\0x10",3) == 0)
++		xx = XARCHIVETYPE_XZ;
+ 	else if (memcmp ( magic,"\211LZO",4) == 0)
+ 		xx = XARCHIVETYPE_LZOP;
+ 	else if (memcmp ( magic,"\xed\xab\xee\xdb",4) == 0)
+@@ -1463,6 +1465,7 @@ void xa_set_statusbar_message_for_displa
+ 		case XARCHIVETYPE_GZIP:
+ 		case XARCHIVETYPE_BZIP2:
+ 		case XARCHIVETYPE_LZMA:
++		case XARCHIVETYPE_XZ:
+ 		case XARCHIVETYPE_LZOP:
+ 		case XARCHIVETYPE_RPM:
+ 		pos = 3;
+@@ -1482,6 +1485,7 @@ void xa_set_statusbar_message_for_displa
+ 		case XARCHIVETYPE_TAR_GZ:
+ 		case XARCHIVETYPE_TAR_BZ2:
+ 		case XARCHIVETYPE_TAR_LZMA:
++		case XARCHIVETYPE_TAR_XZ:
+ 		case XARCHIVETYPE_TAR_LZOP:
+ 		case XARCHIVETYPE_TAR:
+ 		case XARCHIVETYPE_ZIP:
+@@ -1526,6 +1530,7 @@ void xa_row_selected (GtkTreeSelection *
+ 		case XARCHIVETYPE_GZIP:
+ 		case XARCHIVETYPE_BZIP2:
+ 		case XARCHIVETYPE_LZMA:
++		case XARCHIVETYPE_XZ:
+ 		case XARCHIVETYPE_LZOP:
+ 		case XARCHIVETYPE_RPM:
+ 		pos = 3;
+@@ -1545,6 +1550,7 @@ void xa_row_selected (GtkTreeSelection *
+ 		case XARCHIVETYPE_TAR_GZ:
+ 		case XARCHIVETYPE_TAR_BZ2:
+ 		case XARCHIVETYPE_TAR_LZMA:
++		case XARCHIVETYPE_TAR_XZ:
+ 		case XARCHIVETYPE_TAR_LZOP:
+ 		case XARCHIVETYPE_TAR:
+ 		case XARCHIVETYPE_ZIP:
+--- xarchiver-0.5.2+20130119+dfsg-3-sid.orig/src/window.c.orig
++++ xarchiver-0.5.2+20130119+dfsg-3-sid/src/window.c.orig
+@@ -1719,6 +1719,9 @@ void drag_data_get (GtkWidget *widget,Gd
+ 			gtk_tree_selection_selected_foreach (selection,(GtkTreeSelectionForeachFunc) xa_concat_selected_filenames,&names);
+ 			archive->full_path = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (extract_window->extract_full));
+ 			archive->overwrite = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (extract_window->overwrite_check));
++			gchar *unescaped_extraction_path = archive->extraction_path;
++			archive->extraction_path = xa_escape_filename(unescaped_extraction_path, "$'`\"\\!?* ()[]&|:;<>#");
++			g_free(unescaped_extraction_path);
+ 			(*archive->extract) (archive,names);
+ 
+ 			g_list_foreach (row_list,(GFunc) gtk_tree_path_free,NULL);

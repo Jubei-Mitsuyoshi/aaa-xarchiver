@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+
+%:
+	dh $@ --parallel --with autotools_dev
+
+override_dh_auto_configure:
+	dh_auto_configure -- --libexecdir=/usr/lib
+
+override_dh_auto_clean:
+	touch config.status
+	dh_auto_clean
+	rm -f config.status
+
+override_dh_auto_test:
+	# test suite is incomplete and does not work
+
+override_dh_auto_install:
+	dh_auto_install --destdir=$(CURDIR)/debian/xarchiver
+
+	# removing useless files
+	rm -f debian/xarchiver/usr/share/doc/xarchiver/AUTHORS
+	rm -f debian/xarchiver/usr/share/doc/xarchiver/COPYING
+	rm -f debian/xarchiver/usr/share/doc/xarchiver/NEWS
+	rm -f debian/xarchiver/usr/share/doc/xarchiver/README
+	rm -f debian/xarchiver/usr/share/doc/xarchiver/ChangeLog
+
+override_dh_strip:
+	dh_strip --dbg-package=xarchiver-dbg

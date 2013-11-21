@@ -1,0 +1,38 @@
+Description: <short summary of the patch>
+ *taken from lsd stable
+ xarchiver (1:0.5.2+20130119+dfsg-3) unstable; urgency=low
+ .
+   * [4b84604] Suggest lhasa as drop in replacement for lha. (LP: #1173869)
+   * [c7d1b8b] Update fix-7z-crash.patch and fix support for 7z archives.
+     Display content of 7z archives and files with spaces correctly.
+     (Closes: #717700)
+   * [e4808cb] debian/rules: Add dh_auto_clean override.
+     Touch config.status to avoid build issues with git-buildpackage and
+     remove the file again.
+Author: Markus Koschany <apo@gambaru.de>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- xarchiver-0.5.2+20130119+dfsg.orig/src/pref_dialog.c
++++ xarchiver-0.5.2+20130119+dfsg/src/pref_dialog.c
+@@ -102,7 +102,8 @@ Prefs_dialog_data *xa_create_prefs_dialo
+ 	archive_type = g_list_first (ArchiveType);
+ 	while ( archive_type != NULL )
+ 	{
+-		if (strcmp(archive_type->data, "tgz") == 0 ||
++		if (strcmp(archive_type->data, "arj") == 0 ||
++			strcmp(archive_type->data, "tgz") == 0 ||
+ 			strcmp(archive_type->data, "rpm") == 0 ||
+ 			(strcmp(archive_type->data, "rar") == 0 && unrar) )
+ 			goto next;

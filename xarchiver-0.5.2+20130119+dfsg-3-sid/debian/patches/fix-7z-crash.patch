@@ -1,0 +1,117 @@
+From: Markus Koschany <apo@gambaru.de>
+Date: Sat, 24 Jul 2013 18:07:30 +0000
+Subject: fix-7z-crash
+
+Enhance the old patch and restore support for 7z archives.
+Taken from http://pkgs.fedoraproject.org/cgit/xarchiver.git/tree/
+This patch also restores the ability of xarchiver to display 7z archives and
+files with spaces again.
+
+Bug: http://bugs.debian.org/551468
+Bug: http://bugs.debian.org/717700
+---
+ src/7zip.c | 65 +++++++++++++++++---------------------------------------------
+ 1 file changed, 18 insertions(+), 47 deletions(-)
+
+diff --git a/src/7zip.c b/src/7zip.c
+index e2806da..5427127 100644
+--- a/src/7zip.c
++++ b/src/7zip.c
+@@ -72,7 +72,7 @@ void xa_get_7zip_line_content (gchar *line, gpointer data)
+ 
+ 	if (jump_header == FALSE)
+ 	{
+-		if (line[0] == '-')
++		if ((line[0] == '-') && (line[3] != NULL))
+ 		{
+ 			jump_header = TRUE;
+ 			return;
+@@ -93,71 +93,42 @@ void xa_get_7zip_line_content (gchar *line, gpointer data)
+ 	item[4] = line;
+ 
+ 	/* Time */
+-	for(n=13; n < linesize; ++n)
+-		if(line[n] == ' ')
+-			break;
+-	line[n] = '\0';
++	line[19] = '\0';
+ 	item[3] = line + 11;
+-	a = ++n;
+ 	
+ 	/* Permissions */
+-	for(; n < linesize; n++)
+-		if(line[n] == ' ')
+-			break;
+-	line[n] = '\0';
+-	if ((line+a)[0] == 'D')
+-		dir = TRUE;
+-	item[2] = line + a;
++	line[25] = '\0';
++	item[2] = line + 20;
+ 	
+ 	/* Size */
+-	for(++n; n < linesize; ++n)
+-		if(line[n] >= '0' && line[n] <= '9')
++	for(a=26; a < linesize; ++a)
++		if(line[a] >= '0' && line[a] <= '9')
+ 			break;
+-	a = n;
+ 
+-	for(; n < linesize; ++n)
+-		if(line[n] == ' ')
+-			break;
+-
+-	line[n] = '\0';
++	line[38] = '\0';
+ 	item[0] = line + a;
+ 	archive->dummy_size += g_ascii_strtoull(item[0],NULL,0);
+ 
+ 	/* Compressed */
+-	for(++n; n < linesize; ++n)
+-		if(line[n] >= '0' && line[n] <= '9')
+-			break;
+-	a = n;
+-
+-	for(; n < linesize; ++n)
+-		if(line[n] == ' ')
+-			break;
+-
+-	line[n] = '\0';
+-
+-	if (line[50] != ' ')
++	/* Is this item solid? */
++	if (line[50] == ' ')
+ 	{
+-		n+=2;
+-		item[1] = line + a;
+ 		line[linesize-1] = '\0';
+-		filename = g_strdup(line + n);
++		filename = g_strdup(line + 53);
+ 	}
+-	/* Is this a solid archive? */
++
+ 	else
+ 	{
+-		item[1] = "0";
+-		line[n-1] = '\0';
++		for(a=39; a < linesize; ++a)
++			if(line[a] >= '0' && line[a] <= '9')
++				break;
++
++		line[51] = '\0';
++		item[1] = line + a;
++		line[linesize-1] = '\0';
+ 		filename = g_strdup(line + 53);
+ 	}
+ 
+-	/* Work around for 7za which doesn't
+-	* output / with directories */
+-	if (dir)
+-	{
+-		gchar *filename_with_slash = g_strconcat (filename,"/",NULL);
+-		g_free (filename);
+-		filename = filename_with_slash;
+-	}
+ 	entry = xa_set_archive_entries_for_each_row (archive,filename,item);
+ 	g_free(filename);
+ }
