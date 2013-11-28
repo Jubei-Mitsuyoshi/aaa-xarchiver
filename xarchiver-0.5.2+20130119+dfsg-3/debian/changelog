@@ -1,4 +1,4 @@
-xarchiver (1:0.5.2+20130119+dfsg-3-sid-aaa) unstable; urgency=low
+xarchiver (1:0.5.2+20130119+dfsg-3) unstable; urgency=low
 
   * added a shed load of patches from lsd linux stable/xarchiver should
     be good
