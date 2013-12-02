@@ -3,7 +3,7 @@ xarchiver (1:0.5.2+20130119+dfsg-3) unstable; urgency=low
   * added a shed load of patches from lsd linux stable/xarchiver should
     be good
 
- -- root <root@localhost.localdomain>  Thu, 21 Nov 2013 13:08:30 +0100
+ -- Jubei Mitsuyoshi <jubei.house.of.five.masters@gmail.com>  Thu, 21 Nov 2013 13:08:30 +0100
 
 xarchiver (1:0.5.2+20130119+dfsg-3) unstable; urgency=low
 

@@ -1,7 +1,7 @@
 Source: xarchiver
 Section: x11
 Priority: optional
-Maintainer: Markus Koschany <apo@gambaru.de>
+Maintainer: Jubei Mitsuyoshi <jubei.house.of.five.masters@gmail.com>
 Build-Depends:
  autotools-dev,
  debhelper (>= 9),
@@ -34,6 +34,9 @@ Description: GTK+ frontend for most used compression formats
  7z, arj, bzip2, gzip, rar, tar, zip, rpm and deb files. It allows you to
  create archives and add, extract, and delete files from them. Password
  protected archives in the arj, 7z, rar and zip formats are supported.
+ .
+ The *aaa versions of this pakage are heavily patched to add features ( xz support
+ for one ) and improve stability
 
 Package: xarchiver-dbg
 Section: debug
